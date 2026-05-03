@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planificador FV016 - Secado semanal óptimo v51</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --azul:#2563eb;--verde:#16a34a;--ambar:#d97706;--rojo:#dc2626;
+  --fondo:#f4f6f8;--tarjeta:#fff;--borde:#d1d5db;--cab:#eef2ff;--txt:#1f2937;--gris:#6b7280;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--txt);font-family:Arial,Helvetica,sans-serif;font-size:15px}
+header{background:var(--azul);color:white;text-align:center;padding:16px}
+main{max-width:1700px;margin:0 auto;padding:16px}
+h1,h2,h3{margin:0 0 10px;text-align:center}
+p{margin:8px 0;text-align:center}
+.card{background:var(--tarjeta);border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+label{display:block;font-weight:bold;margin-bottom:5px;text-align:center}
+input,select,button{width:100%;padding:8px;border-radius:8px;border:1px solid var(--borde);text-align:center;font-size:15px;background:#fff}
+button{background:var(--azul);color:#fff;border:none;font-weight:bold;cursor:pointer}
+button.verde{background:var(--verde)}button.gris{background:#4b5563}button.rojo{background:var(--rojo)}button.amarillo{background:#facc15;color:#1f2937;border:1px solid #d97706}
+.card.collapsed > :not(h2):not(.toggle-section){display:none!important}
+.toggle-section{display:block;width:auto;min-width:170px;margin:0 auto 10px auto;background:#64748b;color:#fff}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.actions button{width:auto;min-width:150px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{border:1px solid var(--borde);padding:6px;text-align:center;vertical-align:middle}
+th{background:var(--cab)}
+.producto{min-width:250px}.num{min-width:86px}.dia{min-width:78px}.silo{min-width:92px}
+.ok{color:var(--verde);font-weight:bold}.warn{color:var(--ambar);font-weight:bold}.bad{color:var(--rojo);font-weight:bold}.muted{color:var(--gris);font-size:13px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.box{border:1px solid var(--borde);border-radius:10px;padding:12px;background:#f9fafb;text-align:center}
+.box strong{display:block;font-size:21px;margin-top:5px}
+.plan-dia{border:1px solid var(--borde);border-radius:12px;padding:10px;margin:10px 0;background:#fbfdff}
+.plan-dia h3{background:var(--cab);border-radius:8px;padding:8px}
+.small{font-size:12px}
+.highlight{background:#fff7ed}
+.blue-section{background:#eaf3ff !important;border-color:#60a5fa !important}
+.blue-section h2{background:#2563eb;color:#fff;border-radius:8px;padding:8px}
+@media print{
+  body{background:white;font-size:11pt}
+  header,.no-print{display:none!important}
+  main{max-width:none;padding:0}
+  .card,.plan-dia{box-shadow:none;break-inside:avoid}
+  input,select{border:none;padding:0;background:transparent}
+}
+
+/* Ajustes de ancho solicitados */
+#tablaProductos th.producto,
+#tablaProductos td:first-child {
+  min-width: 85px !important;
+  width: 85px !important;
+  max-width: 110px !important;
+}
+
+#tablaProductos th.num,
+#tablaProductos td:nth-child(2) {
+  min-width: 55px !important;
+  width: 55px !important;
+  max-width: 70px !important;
+}
+
+#tablaSilos th:nth-child(3),
+#tablaSilos th:nth-child(4),
+#tablaSilos td:nth-child(3),
+#tablaSilos td:nth-child(4) {
+  min-width: 32px !important;
+  width: 32px !important;
+  max-width: 45px !important;
+}
+
+#tablaVaciados th:not(:first-child),
+#tablaVaciados td:not(:first-child) {
+  min-width: 125px !important;
+  width: 125px !important;
+  max-width: 140px !important;
+}
+
+#tablaVaciados th:first-child,
+#tablaVaciados td:first-child {
+  min-width: 180px !important;
+  width: 180px !important;
+}
+
+#tablaProductos input,
+#tablaSilos td:nth-child(3) input,
+#tablaSilos td:nth-child(4) input,
+#tablaVaciados input {
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+}
+
+
+/* Ajuste solicitado v6: Silos */
+#tablaSilos th:nth-child(1),
+#tablaSilos td:nth-child(1) {
+  min-width: 55px !important;
+  width: 55px !important;
+  max-width: 70px !important;
+}
+
+#tablaSilos th:nth-child(3),
+#tablaSilos th:nth-child(4),
+#tablaSilos td:nth-child(3),
+#tablaSilos td:nth-child(4) {
+  min-width: 130px !important;
+  width: 130px !important;
+  max-width: 150px !important;
+}
+
+
+/* Ajuste solicitado v8: tabla Silos */
+#tablaSilos th:nth-child(1),
+#tablaSilos td:nth-child(1) {
+  min-width: 165px !important;
+  width: 165px !important;
+  max-width: 190px !important;
+}
+
+#tablaSilos th:nth-child(2),
+#tablaSilos td:nth-child(2) {
+  min-width: 150px !important;
+  width: 150px !important;
+  max-width: 180px !important;
+}
+
+
+/* Ajuste solicitado v9: Silos Producto +10 caracteres y Hueco -10 */
+#tablaSilos th:nth-child(2),
+#tablaSilos td:nth-child(2) {
+  min-width: 230px !important;
+  width: 230px !important;
+  max-width: 260px !important;
+}
+
+#tablaSilos th:nth-child(5),
+#tablaSilos td:nth-child(5) {
+  min-width: 45px !important;
+  width: 45px !important;
+  max-width: 55px !important;
+  font-size: 13px !important;
+}
+
+
+.estado-dia-grid{
+  display:grid;
+  grid-template-columns: minmax(520px, 2fr) minmax(260px, 1fr);
+  gap:12px;
+  align-items:start;
+  margin-top:10px;
+}
+.estado-dia-grid h4{margin:8px 0;text-align:center}
+.sugerencia-humedo{
+  margin-top:10px;
+  padding:9px;
+  border:1px solid var(--borde);
+  border-radius:10px;
+  background:#fff7ed;
+}
+@media(max-width:900px){
+  .estado-dia-grid{grid-template-columns:1fr}
+}
+
+.hidden{display:none!important}
+.jsonInfo{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:8px}
+.jsonInfo .box b{display:block;color:var(--gris);font-size:12px;margin-bottom:3px}
+.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px;margin:8px 0;text-align:left}
+.notice.ok{background:#dcfce7;border-color:#22c55e;color:#14532d}
+.notice.alert{background:#fee2e2;border-color:#ef4444;color:#7f1d1d}
+.only-print-summary,.only-print-tables{display:none}
+@media print{
+  body.print-summary .print-tables-section{display:none!important}
+  body.print-tables .print-summary-section{display:none!important}
+  body.print-summary .only-print-summary,body.print-tables .only-print-tables{display:block!important}
+}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>Planificador FV016 - Secado semanal óptimo v51</h1>
+  <div>Secado con planificación por fechas, producción húmeda por campañas mínimas y doble silo 50/50</div>
+</header>
+<main>
+
+<section class="card">
+<h2>Parámetros generales</h2>
+<div class="grid">
+  <div><label>Toneladas por camión</label><input id="tonCamion" type="number" min="0" step="0.01" onchange="setParam('tonCamion',this.value)"></div>
+  <div><label>Horas disponibles/día</label><input id="horasDia" type="number" min="1" step="0.25" onchange="setParam('horasDia',this.value)"></div>
+  <div><label>Disponibilidad producción húmeda (%)</label><input id="dispHumedo" type="number" min="0" max="100" step="0.1" onchange="setParam('dispHumedo',this.value)"></div>
+  <div><label>Mínimo a secar por lote (t)</label><input id="minLote" type="number" min="0" step="1" onchange="setParam('minLote',this.value)"></div>
+  <div><label>Máximo a secar por lote (t)</label><input id="maxLote" type="number" min="1" step="1" onchange="setParam('maxLote',this.value)"></div>
+  <div><label>Permitir secar a dos silos a la vez</label><select id="dobleSilo" onchange="setParamBool('dobleSilo',this.value)"><option value="false">No</option><option value="true">Sí</option></select></div>
+  <div><label>t/h si se seca a dos silos</label><input id="dobleTh" type="number" min="0" step="0.01" onchange="setParam('dobleTh',this.value)"></div>
+  <div><label>% generado FV016 GRUESOS en GUARDIAN / BA-GLASS</label><input id="pctGruesosSubproducto" type="number" min="0" max="100" step="0.1" onchange="setParam('pctGruesosSubproducto',this.value)"></div>
+</div>
+<div class="actions no-print">
+  <button class="verde" onclick="calcularPlan()">Calcular previsión</button>
+  <button class="gris" onclick="comprobarEscenariosLoteMinimo()">Comprobar escenarios lote mínimo</button>
+  <button class="gris" onclick="borrarComparacionEscenarios()">Eliminar comparación escenarios</button>
+  <button class="gris" onclick="exportarJSON()">Exportar JSON</button>
+  <button class="gris" onclick="document.getElementById('fileImport').click()">Importar JSON</button>
+  <button class="gris" onclick="imprimirResumenPrevision()">Imprimir PDF resumen y previsión</button>
+  <button class="gris" onclick="imprimirCargasEnvasadosSilos()">Imprimir PDF cargas, envasados y silos</button>
+  <button class="amarillo" onclick="seleccionarCarpetaJSON()">Seleccionar carpeta JSON</button>
+  <button class="rojo" onclick="resetear()">Restaurar defecto</button>
+  <button class="rojo" onclick="anularPrevision()">Anular previsión</button>
+  <input id="fileImport" type="file" accept=".json,application/json" style="display:none" onchange="importarJSON(event)">
+</div>
+<div class="jsonInfo no-print">
+  <div class="box"><b>Ruta carpeta JSON</b><span id="jsonFolderPath">No seleccionada</span></div>
+  <div class="box"><b>Nombre archivo JSON</b><span id="jsonFileName">planificador_fv016_optimo.json</span></div>
+  <div class="box"><b>Última actualización</b><span id="jsonLastUpdate">Sin guardar</span></div>
+</div>
+<p class="muted">Regla aplicada: se garantiza material antes de servir cada día, se agrupan toneladas del mismo producto, un lote puede continuar al día siguiente y no se empieza otro lote si el anterior no ha terminado.</p>
+</section>
+
+
+<section class="card print-summary-section">
+<h2>Importar datos desde SAP</h2>
+<p class="muted">Para pendientes SAP puedes importar Excel/CSV con columnas como <b>Fecha plan. de carga</b>, <b>PRODUCTO</b> y <b>Nº de cargas</b>. Se filtrarán referencias FV016 para cargas de secado. Las referencias con <b>FC</b>, <b>BB</b> o <b>BIGBAG</b> no se secan: se pasan a “Envasados pendientes por día”. Las referencias con <b>FV2000</b> se omiten.</p>
+<div class="grid">
+  <div><label>Fecha inicial pendientes SAP</label><input id="sapStartDate" type="date"></div>
+  <div><label>Fecha final pendientes SAP</label><input id="sapEndDate" type="date"></div>
+</div>
+<div class="actions no-print"><button class="gris" onclick="document.getElementById('sapFile').click()">Importar pendientes SAP Excel/CSV</button><input id="sapFile" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importarPendientesSAP(event)"></div>
+<div id="sapImportResult" class="muted">Importa los pendientes SAP. Cada importación borra las cargas y envasados pendientes anteriores y deja solo lo que venga en el archivo SAP. Las tablas se muestran en 7 días desde la fecha inicial.</div>
+</section>
+
+<section class="card print-summary-section">
+<h2>Pedido adicional y replanificación</h2>
+<div class="grid">
+  <div><label>Producto adicional</label><select id="extraProduct"></select></div>
+  <div><label>Día solicitado</label><select id="extraDay"></select></div>
+  <div><label>Camiones adicionales</label><input id="extraTrucks" type="number" min="0" step="1" value="1"></div>
+  <div><label>Toneladas pedido envasado</label><input id="extraPackTons" type="number" min="0" step="0.01" value="28"></div>
+</div>
+<div class="actions no-print"><button class="gris" onclick="anadirPedidoYReplanificar()">Añadir pedido y replanificar</button><button class="gris" onclick="comprobarDisponibilidadExtra()">Comprobar disponibilidad</button></div>
+<div id="extraResult" class="muted">Añade un pedido extra y comprueba si puede servirse ese día.</div>
+</section>
+
+<section class="card print-summary-section">
+<h2>Anular camiones y replanificación</h2>
+<div class="grid">
+  <div><label>Producto a anular</label><select id="cancelProduct"></select></div>
+  <div><label>Día de carga</label><select id="cancelDay"></select></div>
+  <div><label>Camiones a anular</label><input id="cancelTrucks" type="number" min="0" step="1" value="1"></div>
+  <div><label>Toneladas pedido envasado</label><input id="cancelPackTons" type="number" min="0" step="0.01" value="28"></div>
+</div>
+<div class="actions no-print"><button class="rojo" onclick="anularCamionesYReplanificar()">Anular camiones y replanificar</button></div>
+<div id="cancelResult" class="muted">Anula camiones previstos de un producto y día. Después se recalcula la planificación.</div>
+</section>
+
+<section class="card print-summary-section">
+<h2>Sustituir una orden planificada y replanificar</h2>
+<div class="grid">
+  <div><label>Día de la orden</label><select id="replaceDay" onchange="renderOrdenesSustitucion()"></select></div>
+  <div><label>Orden planificada a sustituir</label><select id="replaceOrder"></select></div>
+  <div><label>Nuevo producto a secar</label><select id="replaceProduct"></select></div>
+  <div><label>Nuevas toneladas</label><input id="replaceTons" type="number" min="0" step="1" value="50"></div>
+  <div><label>Hora mínima de inicio</label><input id="replaceStartTime" type="time"></div>
+</div>
+<div class="actions no-print"><button class="gris" onclick="sustituirOrdenYReplanificar()">Sustituir orden y replanificar</button><button class="gris" onclick="quitarSustituciones()">Quitar sustituciones manuales</button></div>
+<div id="replaceResult" class="muted">Primero calcula la previsión. Después selecciona una orden y sustitúyela por otra demanda equivalente.</div>
+<h3>Añadir mantenimiento / parada programada</h3>
+<div class="grid">
+  <div><label>Día mantenimiento</label><select id="maintDay"></select></div>
+  <div><label>Hora inicio</label><input id="maintStartTime" type="time"></div>
+  <div><label>Hora fin</label><input id="maintEndTime" type="time"></div>
+  <div><label>Descripción</label><input id="maintDesc" type="text" value="Mantenimiento"></div>
+</div>
+<div class="actions no-print"><button class="rojo" onclick="anadirMantenimientoYReplanificar()">Añadir mantenimiento y replanificar</button><button class="gris" onclick="quitarMantenimientos()">Quitar mantenimientos</button></div>
+<div id="maintenanceResult" class="muted">La parada se registra en el resumen diario y se descuenta como tiempo de parada programada.</div>
+</section>
+
+<section class="card print-summary-section">
+<h2>Resumen general</h2>
+<div class="summary">
+  <div class="box">Capacidad total<strong id="resCap">0 t</strong></div>
+  <div class="box">Stock actual<strong id="resStock">0 t</strong></div>
+  <div class="box">Hueco total<strong id="resHueco">0 t</strong></div>
+  <div class="box">Cargas periodo<strong id="resCarga">0 t</strong></div>
+  <div class="box">Secado planificado<strong id="resSecado">0 t</strong></div>
+  <div class="box">Media secado<strong id="resMediaTh">0 t/h</strong></div>
+  <div class="box">Estado<strong id="resEstado" class="ok">Correcto</strong></div>
+</div>
+</section>
+
+<section class="card print-summary-section">
+<h2>Previsión diaria óptima de secado</h2>
+<div id="plan"></div>
+</section>
+
+<section class="card print-summary-section">
+<h2>Resumen diario</h2>
+<div class="scroll"><table id="tablaResumenDia">
+<thead><tr><th>Día</th><th>Toneladas secadas</th><th>Horas finales secado</th><th>Tiempo vaciado</th><th>Horas finales parada</th><th>Media secado</th><th>Observaciones</th></tr></thead>
+<tbody></tbody></table></div>
+</section>
+
+<section class="collapsible collapsed card print-summary-section">
+<h2>Producto húmedo restante después de la previsión</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p class="muted">Esta tabla se actualiza al calcular la previsión. Muestra el producto húmedo inicial, lo consumido en el secado y lo que queda disponible.</p>
+<div class="scroll"><table id="tablaHumedosRestantes">
+<thead><tr><th class="producto">Producto húmedo</th><th class="num">Inicial</th><th class="num">Consumido</th><th class="num">Generado</th><th class="num">Restante</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="collapsible collapsed card">
+<h2>Productos y t/h de secado</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<div class="actions no-print">
+  <button onclick="addProducto()">Añadir producto</button>
+  <select id="productoEliminar" style="width:auto;min-width:260px"></select>
+  <button class="rojo" onclick="delProducto()">Eliminar producto seleccionado</button>
+</div>
+<div class="scroll"><table id="tablaProductos">
+<thead><tr><th class="producto">Producto</th><th class="num">t/h secado normal</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="collapsible collapsed card">
+<h2>Producto de partida húmedo disponible</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p class="muted">Indique las toneladas húmedas disponibles para poder secar. El programa puede rellenar automáticamente la producción húmeda diaria desde la fecha inicial hasta la final, usando la t/h de cada producto y el factor de disponibilidad. El húmedo producido un día solo estará disponible para secar desde el día siguiente.</p>
+<div class="actions no-print"><button class="gris" onclick="rellenarProduccionHumedaObjetivo(true)">Rellenar producción húmeda objetivo</button><button class="gris" onclick="limpiarProduccionHumeda()">Limpiar producción húmeda diaria</button></div>
+<div class="scroll"><table id="tablaHumedos">
+<thead><tr><th class="producto">Producto húmedo</th><th class="num">t/h producción</th><th class="num">Toneladas disponibles</th><th class="dia">Lunes</th><th class="dia">Martes</th><th class="dia">Miércoles</th><th class="dia">Jueves</th><th class="dia">Viernes</th><th class="dia">Sábado</th><th class="dia">Domingo</th><th class="num">Media</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="collapsible collapsed card">
+<h2>Mezcla especial para convertir FV016 SAMCA2 en FV016 SAMCA</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p class="muted">El programa calcula la proporción necesaria de FV016 SAMCA2 con FV016 GRUESOS para alcanzar la ley objetivo. En la previsión, FV016 SAMCA puede secarse con húmedo FV016 SAMCA directo y, si falta o se selecciona SAMCA2, se completa con esta mezcla especial.</p>
+<div class="grid">
+  <div><label>Ley FV016 SAMCA2</label><input id="leySamca2" type="number" min="0" step="0.01" onchange="setMezclaLey('leySamca2',this.value)"></div>
+  <div><label>Ley objetivo FV016 SAMCA</label><input id="leySamcaObj" type="number" min="0" step="0.01" onchange="setMezclaLey('leySamcaObj',this.value)"></div>
+  <div><label>Ley FV016 GRUESOS</label><input id="leyGruesos" type="number" min="0" step="0.01" onchange="setMezclaLey('leyGruesos',this.value)"></div>
+</div>
+<div class="scroll"><table id="tablaMezclaSamca">
+<thead><tr><th>% SAMCA2</th><th>% FV016 GRUESOS</th><th>Proporción SAMCA2 : GRUESOS</th><th>SAMCA obtenible por mezcla</th><th>Consumo por 100 t SAMCA</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="collapsible collapsed card">
+<h2>Origen húmedo de cada producto seco</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p class="muted">Seleccione de qué producto húmedo se obtiene cada producto seco.</p>
+<div class="scroll"><table id="tablaOrigenSeco">
+<thead><tr><th class="producto">Producto seco</th><th class="producto">Producto húmedo de partida</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="collapsible collapsed card print-tables-section">
+<h2>Silos</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p class="muted">En la columna Actual, al pulsar Enter pasa a la siguiente fila de la misma columna.</p>
+<div class="scroll"><table id="tablaSilos">
+<thead><tr><th class="silo">Silo</th><th class="producto">Producto</th><th class="num">Máximo</th><th class="num">Actual</th><th class="num">Hueco</th><th class="num">% llenado</th></tr></thead>
+<tbody></tbody></table></div>
+</section>
+
+
+<section class="collapsible collapsed card print-tables-section">
+<h2>Envasados disponibles</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p class="muted">Importa Excel. Se añaden solo filas con <b>DISPONIBLE (t) &gt; 0</b>. Columnas leídas: PRODUCTO, PALETS/BB, DISPONIBLE (t), REF REAL y REF SAP.</p>
+<div class="actions no-print"><button class="gris" onclick="document.getElementById('packExcelFile').click()">Importar envasados Excel</button><button class="gris" onclick="borrarEnvasados()">Borrar envasados</button><input id="packExcelFile" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importarEnvasadosExcel(event)"></div>
+<div class="scroll"><table id="tablaEnvasadosDisponibles"><thead><tr><th>Producto</th><th>PALETS/BB</th><th>Disponible (t)</th><th>REF REAL</th><th>REF SAP</th></tr></thead><tbody></tbody></table></div>
+<div id="packResult" class="muted">Sin envasados importados.</div>
+</section>
+
+<section class="card print-tables-section blue-section">
+<h2>Envasados pendientes por día</h2>
+<div class="scroll"><table id="tablaEnvasadosPendientes"><thead><tr><th>Referencia envasado</th><th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th><th>Viernes</th><th>Sábado</th><th>Domingo</th><th>Toneladas periodo</th><th>Stock actual</th><th>Déficit inicial</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="card print-tables-section blue-section">
+<h2>Cargas previstas de Feldespato a Granel</h2>
+<p class="muted">Al pulsar Enter avanza de un día al siguiente. Desde domingo pasa al primer día de la siguiente fila.</p>
+<div class="scroll"><table id="tablaCargas">
+<thead><tr><th class="producto">Producto</th><th class="dia">Lunes<br>cam.</th><th class="dia">Martes<br>cam.</th><th class="dia">Miércoles<br>cam.</th><th class="dia">Jueves<br>cam.</th><th class="dia">Viernes<br>cam.</th><th class="dia">Sábado<br>cam.</th><th class="dia">Domingo<br>cam.</th><th>Total cam.</th><th>Toneladas periodo</th><th>Stock actual</th><th>Déficit inicial</th></tr></thead>
+<tbody></tbody></table></div>
+</section>
+
+<section class="collapsible collapsed card">
+<h2>Tiempos de vaciado entre productos</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p class="muted">Horas de vaciado por cambio. Al pulsar Enter avanza a la siguiente columna; desde la última columna vuelve al inicio de la primera fila.</p>
+<div class="scroll"><table id="tablaVaciados"></table></div>
+</section>
+
+<section class="collapsible collapsed card">
+<h2>Regla de doble silo 50/50</h2>
+<button class="toggle-section no-print" onclick="toggleSection(this)">Mostrar/Ocultar</button>
+<p>Si se activa, el programa permite secar simultáneamente a un silo del grupo N y uno del grupo V, repartiendo mitad y mitad.</p>
+<p class="muted">Seleccione qué combinaciones están permitidas. Grupo N: S4N, S5N, S7N. Grupo V: S7V, S8V.</p>
+<div class="scroll">
+<table id="tablaDobleSilo">
+  <thead>
+    <tr>
+      <th>Silo grupo N \ Silo grupo V</th>
+      <th>Silo 7V</th>
+      <th>Silo 8 V</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+</div>
+</section>
+
+</main>
+
+<script>
+const DIAS = Array.from({length:31},(_,i)=>`d${i}`);
+const DIAS_TXT = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].concat(Array.from({length:24},(_,i)=>`Día ${i+8}`));
+const DOBLE_N = ["Silo 4N","Silo 5N","Silo 7N"];
+const DOBLE_V = ["Silo 7V","Silo 8 V"];
+
+const PRODUCTOS_DEF = [
+ "FV016 SAMCA","FV016 PUERTO","FV016 VIDRIO GUARDIAN","FV016 VIDRIO BA-GLASS",
+ "FV016 EXTRA","FV016 EXTRA Q","FV016 ACIDO","FV016 EXTRA 2P","FV016 GRUESOS"
+];
+
+const HUMEDOS_DEF = ["FV016 SAMCA","FV016 PUERTO","FV016 EXTRA","FV016 Q","FV016 ACIDO","FV016 SAMCA2","FV016 GRUESOS"];
+
+const SECADO_DEF = {
+ "FV016 SAMCA":26,"FV016 PUERTO":26,"FV016 VIDRIO GUARDIAN":25,"FV016 VIDRIO BA-GLASS":25,
+ "FV016 EXTRA":23,"FV016 EXTRA Q":23,"FV016 ACIDO":24,"FV016 EXTRA 2P":23,"FV016 GRUESOS":26
+};
+
+const SILOS_DEF = [
+ {nombre:"Silo 1N",maximo:1000,actual:0,producto:"FV016 PUERTO"},
+ {nombre:"Silo 2N",maximo:1000,actual:0,producto:"FV016 SAMCA"},
+ {nombre:"Silo 3N",maximo:50,actual:0,producto:"FV016 GRUESOS"},
+ {nombre:"Silo 4N",maximo:185,actual:0,producto:"FV016 VIDRIO GUARDIAN"},
+ {nombre:"Silo 5N",maximo:185,actual:0,producto:"FV016 VIDRIO GUARDIAN"},
+ {nombre:"Silo 6N",maximo:185,actual:0,producto:"FV016 EXTRA 2P"},
+ {nombre:"Silo 7N",maximo:185,actual:0,producto:"FV016 VIDRIO BA-GLASS"},
+ {nombre:"Silo 1V",maximo:100,actual:0,producto:"FV016 ACIDO"},
+ {nombre:"Silo 2V",maximo:100,actual:0,producto:"FV016 ACIDO"},
+ {nombre:"Silo 3-4 V",maximo:200,actual:0,producto:"FV016 EXTRA 2P"},
+ {nombre:"Silo 5-6 V",maximo:200,actual:0,producto:"FV016 EXTRA"},
+ {nombre:"Silo 7V",maximo:190,actual:0,producto:"FV016 EXTRA Q"},
+ {nombre:"Silo 8 V",maximo:190,actual:0,producto:"FV016 EXTRA Q"}
+];
+
+const KEY="fv016_plan_optimo_v2";
+let data = load();
+let jsonDirectoryHandle = null;
+let autoSaveTimer = null;
+let suspendFolderAutoSave = false;
+const JSON_FILE_NAME = 'planificador_fv016_optimo.json';
+
+function uid(){return crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())}
+function n(v){return Number(v)||0}
+function ton(v){return n(v).toLocaleString("es-ES",{maximumFractionDigits:2})+" t"}
+function num(v){return n(v).toLocaleString("es-ES",{maximumFractionDigits:2})}
+function pct(v){return n(v).toLocaleString("es-ES",{maximumFractionDigits:1})+" %"}
+function horasTxt(h){const m=Math.round(n(h)*60);return Math.floor(m/60)+" h "+(m%60)+" min"}
+function thTxt(v){return n(v).toLocaleString("es-ES",{minimumFractionDigits:1,maximumFractionDigits:1})+" t/h"}
+function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+function escjs(v){return String(v).replaceAll("\\","\\\\").replaceAll("'","\\'")}
+function blankCarga(){const o={}; DIAS.forEach(d=>o[d]=0); return o;}
+
+function normKeyProducto(v){
+ return String(v||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+}
+function mergeProduccionDias(a,b){
+ const out=blankCarga();
+ DIAS.forEach(d=>out[d]=n(a?.[d])+n(b?.[d]));
+ return out;
+}
+function deduplicarHumedos(){
+ if(!data || !Array.isArray(data.humedos)) return;
+ const mapa=new Map();
+ const orden=[];
+ data.humedos.forEach(h=>{
+   if(!h || !String(h.nombre||'').trim()) return;
+   const key=normKeyProducto(h.nombre);
+   if(!mapa.has(key)){
+     const nuevo={
+       nombre:String(h.nombre).trim().toUpperCase(),
+       toneladas:n(h.toneladas),
+       thProd:h.thProd===undefined?25:n(h.thProd),
+       produccionDias:h.produccionDias?{...blankCarga(),...h.produccionDias}:blankCarga()
+     };
+     mapa.set(key,nuevo);
+     orden.push(key);
+   }else{
+     const base=mapa.get(key);
+     base.toneladas+=n(h.toneladas);
+     if(n(base.thProd)<=0 && n(h.thProd)>0) base.thProd=n(h.thProd);
+     base.produccionDias=mergeProduccionDias(base.produccionDias,h.produccionDias);
+   }
+ });
+ data.humedos=orden.map(k=>mapa.get(k));
+}
+function existeHumedo(nombre){
+ const key=normKeyProducto(nombre);
+ return (data.humedos||[]).some(h=>normKeyProducto(h.nombre)===key);
+}
+function getHumedo(nombre){
+ const key=normKeyProducto(nombre);
+ return (data.humedos||[]).find(h=>normKeyProducto(h.nombre)===key);
+}
+function addHumedoUnico(nombre, extra={}){
+ if(!data.humedos)data.humedos=[];
+ const key=normKeyProducto(nombre);
+ if(!key) return null;
+ let h=getHumedo(nombre);
+ if(h) return h;
+ h={nombre:String(nombre).trim().toUpperCase(), toneladas:n(extra.toneladas), thProd:extra.thProd===undefined?25:n(extra.thProd), produccionDias:extra.produccionDias?{...blankCarga(),...extra.produccionDias}:blankCarga()};
+ data.humedos.push(h);
+ return h;
+}
+
+
+function defaultDobleMatrix(){
+ const m={};
+ DOBLE_N.forEach(nn=>{m[nn]={}; DOBLE_V.forEach(vv=>m[nn][vv]=true);});
+ return m;
+}
+function defaultOrigenHumedo(nombre){
+ const up=String(nombre||"").toUpperCase();
+ if(up.includes("SAMCA")) return "FV016 SAMCA";
+ if(up.includes("PUERTO")) return "FV016 PUERTO";
+ if(up.includes("EXTRA Q") || up.endsWith(" Q")) return "FV016 Q";
+ if(up.includes("EXTRA") || up.includes("ACIDO") || up.includes("GRUESOS")) return "FV016 EXTRA";
+ return "FV016 PUERTO";
+}
+function defaultHumedos(){return HUMEDOS_DEF.map(nombre=>({nombre, toneladas:0, thProd:25, produccionDias:blankCarga()}));}
+function defaults(){
+ const productos = PRODUCTOS_DEF.map(nombre=>({nombre, th: SECADO_DEF[nombre]??25, humedo: defaultOrigenHumedo(nombre)}));
+ const cargas = {}; productos.forEach(p=>cargas[p.nombre]=blankCarga());
+ const vaciados = {};
+ productos.forEach(a=>{vaciados[a.nombre]={}; productos.forEach(b=>vaciados[a.nombre][b.nombre]=(a.nombre===b.nombre?0:0.5));});
+ return {tonCamion:28, horasDia:24, dispHumedo:94, minLote:50, maxLote:150, dobleSilo:false, dobleTh:24, pctGruesosSubproducto:12,
+   mezclaSamca:{leySamca2:10.60, leySamcaObj:10.80, leyGruesos:12.00},
+   dobleMatrix: defaultDobleMatrix(), humedos: defaultHumedos(), productos, cargas, vaciados, silos:SILOS_DEF.map(s=>({...s,id:uid()})), sapDateLabels:null, plan:null};
+}
+
+function load(){
+ try{
+  const d=JSON.parse(localStorage.getItem(KEY));
+  if(!d||!d.productos||!d.silos||!d.cargas) return defaults();
+  return normalize(d);
+ }catch{return defaults()}
+}
+function normalize(d){
+ if(d.tonCamion===undefined)d.tonCamion=28;if(d.horasDia===undefined)d.horasDia=24;if(d.dispHumedo===undefined)d.dispHumedo=94;
+ if(d.minLote===undefined)d.minLote=50;if(d.maxLote===undefined)d.maxLote=150;
+ if(d.dobleSilo===undefined)d.dobleSilo=false;if(d.dobleTh===undefined)d.dobleTh=24; if(d.pctGruesosSubproducto===undefined)d.pctGruesosSubproducto=12;
+ if(!d.mezclaSamca)d.mezclaSamca={leySamca2:10.60, leySamcaObj:10.80, leyGruesos:12.00};
+ if(d.mezclaSamca.leySamca2===undefined)d.mezclaSamca.leySamca2=10.60;
+ if(d.mezclaSamca.leySamcaObj===undefined)d.mezclaSamca.leySamcaObj=10.80;
+ if(d.mezclaSamca.leyGruesos===undefined)d.mezclaSamca.leyGruesos=12.00;
+ if(!d.envasados)d.envasados=[];
+ if(!d.envasadosPendientes)d.envasadosPendientes={};
+ if(!d.paradas)d.paradas=[];
+ if(!d.sustituciones)d.sustituciones=[];
+ if(!d.jsonInfo)d.jsonInfo={fileName:"planificador_fv016_optimo.json",lastUpdate:"Sin guardar"};
+ if(d.sapDateLabels===undefined)d.sapDateLabels=null;
+ if(!d.dobleMatrix)d.dobleMatrix=defaultDobleMatrix();
+ DOBLE_N.forEach(nn=>{if(!d.dobleMatrix[nn])d.dobleMatrix[nn]={}; DOBLE_V.forEach(vv=>{if(d.dobleMatrix[nn][vv]===undefined)d.dobleMatrix[nn][vv]=true;});});
+ if(!d.vaciados)d.vaciados={};
+ if(!d.humedos)d.humedos=defaultHumedos();
+ // Normaliza y elimina duplicados de producto húmedo, sumando toneladas y producción diaria si hubiera duplicados.
+ const oldDataRef=data;
+ data=d;
+ deduplicarHumedos();
+ HUMEDOS_DEF.forEach(h=>addHumedoUnico(h,{toneladas:0,thProd:25,produccionDias:blankCarga()}));
+ deduplicarHumedos();
+ d=data;
+ data=oldDataRef;
+ (d.humedos||[]).forEach(h=>{if(h.thProd===undefined)h.thProd=25; if(!h.produccionDias)h.produccionDias=blankCarga(); DIAS.forEach(day=>{if(h.produccionDias[day]===undefined)h.produccionDias[day]=0;});});
+ d.productos.forEach(p=>{
+   if(p.th===undefined)p.th=SECADO_DEF[p.nombre]??25;
+   if(!p.humedo)p.humedo=defaultOrigenHumedo(p.nombre);
+   if(!d.cargas[p.nombre])d.cargas[p.nombre]=blankCarga();
+   DIAS.forEach(day=>{if(d.cargas[p.nombre][day]===undefined)d.cargas[p.nombre][day]=0});
+ });
+ d.productos.forEach(a=>{if(!d.vaciados[a.nombre])d.vaciados[a.nombre]={};d.productos.forEach(b=>{if(d.vaciados[a.nombre][b.nombre]===undefined)d.vaciados[a.nombre][b.nombre]=(a.nombre===b.nombre?0:0.5)})});
+ d.silos.forEach(s=>{if(!s.id)s.id=uid()});
+ return d;
+}
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(data));
+ scheduleFolderAutoSave();
+}
+
+function scheduleFolderAutoSave(){
+ if(!jsonDirectoryHandle || suspendFolderAutoSave) return;
+ clearTimeout(autoSaveTimer);
+ autoSaveTimer=setTimeout(()=>guardarJSONEnCarpeta(false),500);
+}
+
+async function ensureReadWritePermission(handle){
+ if(!handle) return false;
+ const opts={mode:'readwrite'};
+ if((await handle.queryPermission(opts))==='granted') return true;
+ return (await handle.requestPermission(opts))==='granted';
+}
+
+async function buscarArchivoJsonEnCarpeta(dirHandle){
+ const preferred=data.jsonInfo?.fileName || JSON_FILE_NAME;
+ try{
+   const h=await dirHandle.getFileHandle(preferred);
+   return {name:preferred,handle:h};
+ }catch(e){}
+ try{
+   for await (const [name,handle] of dirHandle.entries()){
+     if(handle.kind==='file' && String(name).toLowerCase().endsWith('.json')) return {name,handle};
+   }
+ }catch(e){}
+ return null;
+}
+
+async function cargarJSONDesdeHandle(fileHandle){
+ const file=await fileHandle.getFile();
+ const txt=await file.text();
+ const imp=JSON.parse(txt);
+ if(!imp.productos || !imp.silos) throw new Error('JSON no válido para este planificador');
+ data=normalize(imp);
+ data.jsonInfo=data.jsonInfo||{};
+ data.jsonInfo.fileName=file.name || data.jsonInfo.fileName || JSON_FILE_NAME;
+ data.jsonInfo.folderName=jsonDirectoryHandle?.name || data.jsonInfo.folderName || 'Carpeta seleccionada';
+ data.jsonInfo.lastUpdate='Importado de carpeta: '+new Date().toLocaleString('es-ES');
+ suspendFolderAutoSave=true;
+ render();
+ suspendFolderAutoSave=false;
+}
+
+async function guardarJSONEnCarpeta(showAlert){
+ if(!jsonDirectoryHandle) return;
+ try{
+   const ok=await ensureReadWritePermission(jsonDirectoryHandle);
+   if(!ok){ if(showAlert) alert('No se ha concedido permiso de escritura en la carpeta JSON.'); return; }
+   data.jsonInfo=data.jsonInfo||{};
+   data.jsonInfo.fileName=data.jsonInfo.fileName || JSON_FILE_NAME;
+   data.jsonInfo.folderName=jsonDirectoryHandle.name || 'Carpeta seleccionada';
+   data.jsonInfo.lastUpdate=new Date().toLocaleString('es-ES');
+   localStorage.setItem(KEY,JSON.stringify(data));
+   const fileHandle=await jsonDirectoryHandle.getFileHandle(data.jsonInfo.fileName,{create:true});
+   const writable=await fileHandle.createWritable();
+   await writable.write(JSON.stringify(data,null,2));
+   await writable.close();
+   updateJsonInfo();
+   if(showAlert) alert('JSON guardado en la carpeta seleccionada: '+data.jsonInfo.fileName);
+ }catch(e){
+   console.error(e);
+   if(showAlert) alert('No se pudo guardar el JSON en la carpeta seleccionada.');
+ }
+}
+function toggleSection(btn){const sec=btn.closest('section'); if(sec)sec.classList.toggle('collapsed');}
+
+function productNames(){return data.productos.map(p=>p.nombre)}
+function prod(nombre){return data.productos.find(p=>p.nombre===nombre)}
+function th(nombre){return n(prod(nombre)?.th)}
+function humedoNames(){return (data.humedos||[]).map(h=>h.nombre)}
+function opcionHumedos(selected){return humedoNames().map(h=>`<option value="${esc(h)}" ${h===selected?"selected":""}>${esc(h)}</option>`).join("")}
+function cargaCamiones(nombre,dia){return n(data.cargas[nombre]?.[dia])}
+function cargaTon(nombre,dia){return cargaCamiones(nombre,dia)*n(data.tonCamion)}
+function cargaSemana(nombre){return activeDays().reduce((s,d)=>s+cargaTon(nombre,d),0)}
+function stockProducto(nombre, silos=data.silos){return silos.filter(s=>s.producto===nombre).reduce((a,s)=>a+n(s.actual),0)}
+function capacidadProducto(nombre, silos=data.silos){return silos.filter(s=>s.producto===nombre).reduce((a,s)=>a+n(s.maximo),0)}
+function huecoProducto(nombre, silos=data.silos){return capacidadProducto(nombre,silos)-stockProducto(nombre,silos)}
+function opcionProductos(selected){return productNames().map(p=>`<option value="${esc(p)}" ${p===selected?"selected":""}>${esc(p)}</option>`).join("")}
+
+
+function syncGruesosHumedoDesdeSilo3N(){
+  if(!data.humedos) return;
+  const s3n = data.silos?.find(s => String(s.nombre).trim().toUpperCase() === "SILO 3N");
+  const h = getHumedo("FV016 GRUESOS");
+  if(s3n && h){
+    h.toneladas = n(s3n.actual);
+    h.autoDesdeSilo3N = true;
+  }
+}
+
+function render(){
+ deduplicarHumedos();
+ syncGruesosHumedoDesdeSilo3N();
+ document.getElementById("tonCamion").value=data.tonCamion;
+ document.getElementById("horasDia").value=data.horasDia;
+ document.getElementById("dispHumedo").value=data.dispHumedo;
+ const dispEl=document.getElementById("dispHumedo"); if(dispEl) dispEl.value=data.dispHumedo;
+ document.getElementById("minLote").value=data.minLote;
+ document.getElementById("maxLote").value=data.maxLote;
+ document.getElementById("dobleSilo").value=String(data.dobleSilo);
+ document.getElementById("dobleTh").value=data.dobleTh;
+ document.getElementById("pctGruesosSubproducto").value=data.pctGruesosSubproducto;
+ if(document.getElementById("leySamca2")) document.getElementById("leySamca2").value=n(data.mezclaSamca?.leySamca2);
+ if(document.getElementById("leySamcaObj")) document.getElementById("leySamcaObj").value=n(data.mezclaSamca?.leySamcaObj);
+ if(document.getElementById("leyGruesos")) document.getElementById("leyGruesos").value=n(data.mezclaSamca?.leyGruesos);
+ renderProductos(); renderHumedos(); renderMezclaSamca(); renderOrigenSeco(); renderSilos(); renderEnvasadosDisponibles(); renderCargas(); renderEnvasadosPendientes(); renderVaciados(); renderDobleSilo(); renderControlesReplanificacion(); renderResumen(); renderPlan(); updateJsonInfo(); actualizarCabecerasFechasSAP();
+ save();
+}
+
+
+function updateJsonInfo(){
+ const f=document.getElementById('jsonFileName'), u=document.getElementById('jsonLastUpdate'), r=document.getElementById('jsonFolderPath');
+ if(f) f.textContent=data.jsonInfo?.fileName||'planificador_fv016_optimo.json';
+ if(u) u.textContent=data.jsonInfo?.lastUpdate||'Sin guardar';
+ if(r) r.textContent=data.jsonInfo?.folderName||'No seleccionada';
+}
+function activeDays(){
+ const len=data.sapDateLabels?.length ? Math.min(DIAS.length, Math.max(1,data.sapDateLabels.length)) : 7;
+ return DIAS.slice(0,len);
+}
+function activeDayLabels(){return activeDays().map((d,i)=>data.sapDateLabels?.[i]||DIAS_TXT[i]||`Día ${i+1}`);}
+function diaOptions(sel=0){return activeDayLabels().map((d,i)=>`<option value="${i}" ${i==sel?'selected':''}>${d}</option>`).join('')}
+function diaCabecera(i, sufijo=''){const base=data.sapDateLabels?.[i]||DIAS_TXT[i]||`Día ${i+1}`; return sufijo?`${base}<br>${sufijo}`:base;}
+function actualizarCabecerasFechasSAP(){
+ const ch=document.querySelectorAll('#tablaCargas thead th.dia'); ch.forEach((th,i)=>{th.innerHTML=diaCabecera(i,'cam.')});
+ const eh=document.querySelectorAll('#tablaEnvasadosPendientes thead th'); for(let i=0;i<activeDays().length;i++){if(eh[i+1])eh[i+1].innerHTML=diaCabecera(i);}
+ const hh=document.querySelectorAll('#tablaHumedos thead th.dia'); hh.forEach((th,i)=>{th.innerHTML=diaCabecera(i);});
+}
+function envRefKey(ref){return 'ENVREF|'+encodeURIComponent(String(ref||''));}
+function envRefFromKey(key){try{return decodeURIComponent(String(key).replace(/^ENVREF\|/,''));}catch{return String(key).replace(/^ENVREF\|/,'');}}
+function productosYEnvasados(){
+ const arr=productNames().slice();
+ (data.envasados||[]).forEach((e,i)=>arr.push('ENV|'+i));
+ Object.keys(data.envasadosPendientes||{}).forEach(ref=>arr.push(envRefKey(ref)));
+ return Array.from(new Set(arr));
+}
+function labelProductoOEnv(v){
+ const sv=String(v);
+ if(sv.startsWith('ENV|')){const e=data.envasados[Number(sv.split('|')[1])]; return e?`ENV ${e.producto||''} | ${e.refSap||''} | ${e.refReal||''}`:v;}
+ if(sv.startsWith('ENVREF|')) return `ENV pendiente ${envRefFromKey(sv)}`;
+ return v;
+}
+function opcionesProductosYEnvasados(sel){return productosYEnvasados().map(p=>`<option value="${esc(p)}" ${p===sel?'selected':''}>${esc(labelProductoOEnv(p))}</option>`).join('')}
+function renderControlesReplanificacion(){
+ ['extraDay','cancelDay','replaceDay','maintDay'].forEach(id=>{const el=document.getElementById(id); if(el && !el.dataset.filled){el.innerHTML=diaOptions(); el.dataset.filled='1';}});
+ ['extraProduct','cancelProduct','replaceProduct'].forEach(id=>{const el=document.getElementById(id); if(el) el.innerHTML=(id==='extraProduct'||id==='cancelProduct')?opcionesProductosYEnvasados(el.value):opcionProductos(el.value);});
+ renderOrdenesSustitucion();
+}
+function renderOrdenesSustitucion(){
+ const sel=document.getElementById('replaceOrder'); if(!sel)return;
+ const di=Number(document.getElementById('replaceDay')?.value)||0;
+ const tareas=(data.plan?.dias?.[di]?.tareas||[]).filter(t=>t.tipo!=='vaciado' && n(t.toneladas)>0);
+ sel.innerHTML=tareas.length?tareas.map((t,i)=>`<option value="${i}">${esc(t.producto)} - ${ton(t.toneladas)} - ${esc(t.destino||'')}</option>`).join(''):'<option value="">Sin órdenes calculadas</option>';
+}
+function renderEnvasadosDisponibles(){
+ const tb=document.querySelector('#tablaEnvasadosDisponibles tbody'); if(!tb)return; tb.innerHTML='';
+ const arr=data.envasados||[];
+ if(!arr.length){tb.innerHTML='<tr><td colspan="5" class="muted">No hay envasados importados.</td></tr>';}
+ arr.forEach(e=>tb.insertAdjacentHTML('beforeend',`<tr><td>${esc(e.producto)}</td><td>${esc(e.palets)}</td><td>${ton(e.disponible)}</td><td>${esc(e.refReal)}</td><td>${esc(e.refSap)}</td></tr>`));
+ const pr=document.getElementById('packResult'); if(pr)pr.textContent=arr.length?`${arr.length} referencias de envasado disponibles importadas.`:'Sin envasados importados.';
+}
+function stockEnvasado(ref){
+ const t=normRef(ref); let total=0;
+ (data.envasados||[]).forEach(e=>{const vals=[e.producto,e.refReal,e.refSap].map(normRef); if(vals.some(v=>v && (v===t || v.includes(t) || t.includes(v)))) total+=n(e.disponible);});
+ return total;
+}
+function renderEnvasadosPendientes(){
+ const table=document.getElementById('tablaEnvasadosPendientes'); if(!table)return;
+ table.innerHTML=`<thead><tr><th>Referencia envasado</th>${activeDays().map((d,i)=>`<th>${diaCabecera(i)}</th>`).join('')}<th>Toneladas periodo</th><th>Stock actual</th><th>Déficit inicial</th></tr></thead><tbody></tbody>`;
+ const tb=table.querySelector('tbody');
+ const eps=data.envasadosPendientes||{}; const refs=Object.keys(eps).sort();
+ if(!refs.length){tb.innerHTML=`<tr><td colspan="${activeDays().length+4}" class="muted">No hay pedidos de envasado pendientes.</td></tr>`;return;}
+ refs.forEach(ref=>{const row=eps[ref]||{}; const total=activeDays().reduce((s,d)=>s+n(row[d]),0); const stock=stockEnvasado(ref); const deficit=Math.max(0,total-stock); tb.insertAdjacentHTML('beforeend',`<tr><td>${esc(ref)}</td>${activeDays().map(d=>`<td><input type="number" min="0" step="0.01" value="${n(row[d])}" onchange="setEnvPendiente('${escjs(ref)}','${d}',this.value)"></td>`).join('')}<td><strong>${ton(total)}</strong></td><td>${ton(stock)}</td><td class="${deficit>0?'bad':'ok'}">${ton(deficit)}</td></tr>`);});
+}
+function setEnvPendiente(ref,dia,v){if(!data.envasadosPendientes)data.envasadosPendientes={}; if(!data.envasadosPendientes[ref])data.envasadosPendientes[ref]=blankCarga(); data.envasadosPendientes[ref][dia]=n(v); save(); render();}
+function normRef(v){return String(v||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'')}
+function esOmitidoSAP(ref){const t=normRef(ref); return t.includes('FV2000')}
+function esNoSecableSAP(ref){const t=normRef(ref); return t.includes('FC')||t.includes('BB')||t.includes('BIGBAG')}
+function esCargaSAPFV(ref){const t=normRef(ref); return t.includes('FV016')&&!esNoSecableSAP(ref)&&!esOmitidoSAP(ref)}
+function esEnvasadoSAP(ref){const t=normRef(ref); return !esOmitidoSAP(ref) && (esNoSecableSAP(ref) || (!t.includes('RP')&&!t.includes('SAC')&&!t.includes('ARENA')))}
+function parseNumLoose(v){let t=String(v??'').trim(); if(!t)return 0; if(t.includes(',') && t.includes('.')) t=t.replace(/\./g,'').replace(',','.'); else t=t.replace(',','.'); return Number(t)||0;}
+function getLoose(row,names){const ks=Object.keys(row); for(const name of names){const target=normRef(name); const k=ks.find(x=>normRef(x)===target); if(k!==undefined)return row[k];} return '';}
+function parseSapCsv(txt){const lines=String(txt||'').split(/\r?\n/).filter(x=>x.trim()); if(!lines.length)return []; const sep=(lines[0].match(/;/g)||[]).length>=(lines[0].match(/,/g)||[]).length?';':','; const head=lines[0].split(sep).map(x=>x.trim().replace(/^"|"$/g,'')); return lines.slice(1).map(line=>{const vals=line.split(sep).map(x=>x.trim().replace(/^"|"$/g,'')); const o={}; head.forEach((h,i)=>o[h]=vals[i]??''); return o;});}
+function parseSapDateValue(v){
+ if(v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(),v.getMonth(),v.getDate());
+ if(typeof v==='number'&&isFinite(v)){let d=new Date(Math.round((v-25569)*86400*1000)); if(!isNaN(d))return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+ let t=String(v||'').trim(); if(!t)return null; let m=t.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?/); if(m){let y=m[3]?Number(m[3]):new Date().getFullYear(); if(y<100)y+=2000; return new Date(y,Number(m[2])-1,Number(m[1]));}
+ let d=new Date(t); if(!isNaN(d))return new Date(d.getFullYear(),d.getMonth(),d.getDate()); return null;
+}
+function dateKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function diaDesdeFecha(d,start){const ms=24*3600*1000; const idx=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(start.getFullYear(),start.getMonth(),start.getDate()))/ms); return idx>=0&&idx<DIAS.length?DIAS[idx]:null;}
+function addProductoAuto(nombre){nombre=String(nombre||'').trim().toUpperCase(); if(!nombre)return; if(prod(nombre))return; data.productos.push({nombre,th:25,humedo:defaultOrigenHumedo(nombre)}); data.cargas[nombre]=blankCarga(); data.vaciados[nombre]={}; productNames().forEach(p=>{data.vaciados[nombre][p]=(p===nombre?0:0.5); if(!data.vaciados[p])data.vaciados[p]={}; data.vaciados[p][nombre]=(p===nombre?0:0.5);});}
+function importarPendientesSAP(ev){
+ const file=ev.target.files[0]; if(!file)return; const out=document.getElementById('sapImportResult');
+ const finish=(rows)=>{
+  try{
+   const startV=document.getElementById('sapStartDate').value;
+   const endV=document.getElementById('sapEndDate').value;
+   if(!startV||!endV)throw new Error('Indica fecha inicial y final.');
+   const start=new Date(startV+'T00:00:00'), end=new Date(endV+'T00:00:00');
+   const diasPeriodo=Math.min(DIAS.length, Math.max(1, Math.round((end-start)/(24*3600*1000))+1));
+   data.sapDateLabels=Array.from({length:diasPeriodo},(_,i)=>{
+    const ff=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    const nombre=DIAS_TXT[ff.getDay()===0?6:ff.getDay()-1] || `Día ${i+1}`;
+    return `${nombre} ${String(ff.getDate()).padStart(2,'0')}/${String(ff.getMonth()+1).padStart(2,'0')}`;
+   });
+
+   // La importación SAP sustituye lo anterior: no suma sobre cargas o envasados pendientes existentes.
+   productNames().forEach(p=>{data.cargas[p]=blankCarga();});
+   data.envasadosPendientes={};
+
+   let cargas=0, env=0, fuera=0, omitidosFV2000=0;
+   rows.forEach(row=>{
+    let f=parseSapDateValue(getLoose(row,['Fecha plan. de carga','Fecha plan de carga','Fecha','Fecha carga']));
+    if(!f){fuera++;return;}
+    if(f<start) f=new Date(start.getFullYear(),start.getMonth(),start.getDate());
+    if(f>end){fuera++;return;}
+    const dia=diaDesdeFecha(f,start);
+    if(!dia){fuera++;return;}
+    const ref=String(getLoose(row,['PRODUCTO','Producto','Material','Referencia','Producto SAP','Texto adicional 3'])||'').trim().toUpperCase();
+    if(!ref)return;
+    if(esOmitidoSAP(ref)){omitidosFV2000++;return;}
+    const qty=parseNumLoose(getLoose(row,['Nº de cargas','N de cargas','N cargas','No de cargas','Cargas','Cantidad']))||1;
+
+    if(esCargaSAPFV(ref)){
+      addProductoAuto(ref);
+      if(!data.cargas[ref])data.cargas[ref]=blankCarga();
+      data.cargas[ref][dia]=n(data.cargas[ref][dia])+qty;
+      cargas++;
+    } else if(esEnvasadoSAP(ref)){
+      if(!data.envasadosPendientes[ref])data.envasadosPendientes[ref]=blankCarga();
+      data.envasadosPendientes[ref][dia]=n(data.envasadosPendientes[ref][dia])+qty*n(data.tonCamion);
+      env++;
+    }
+   });
+   data.plan=null;
+   render();
+   out.innerHTML=`<div class="notice ok"><b>SAP importado.</b><br>Cargas FV016 de secado importadas: ${cargas}. Envasados pendientes importados: ${env}. Filas fuera de fecha/no usadas: ${fuera}. Referencias FV2000 omitidas: ${omitidosFV2000}.<br>La importación ha sustituido las cargas y envasados pendientes anteriores. Las referencias con FC, BB o BIGBAG se han tratado como envasado pendiente y no se incluyen en la previsión de secado.</div>`;
+  }catch(err){out.innerHTML=`<div class="notice alert"><b>Error importando SAP:</b> ${esc(err.message)}</div>`;}
+ };
+ const reader=new FileReader(); const ext=(file.name.split('.').pop()||'').toLowerCase(); reader.onload=()=>{try{ if(ext==='csv')finish(parseSapCsv(reader.result)); else { if(typeof XLSX==='undefined')throw new Error('No se ha cargado la librería Excel. Usa CSV si estás sin conexión.'); const wb=XLSX.read(reader.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; finish(XLSX.utils.sheet_to_json(ws,{defval:'',raw:false})); }}catch(err){out.innerHTML=`<div class="notice alert"><b>Error leyendo archivo:</b> ${esc(err.message)}</div>`;} ev.target.value='';}; if(ext==='csv')reader.readAsText(file,'UTF-8'); else reader.readAsArrayBuffer(file);
+}
+
+function importarEnvasadosExcel(ev){
+ const file=ev.target.files[0]; if(!file)return; const out=document.getElementById('packResult'); const finish=(rows)=>{try{const imported=[]; let omitSaco=0; rows.forEach((row,idx)=>{const disponible=parseNumLoose(getLoose(row,['DISPONIBLE (t)','DISPONIBLE','Disponible t','Disponible'])); if(!(disponible>0))return; const producto=String(getLoose(row,['PRODUCTO','Producto','Material','Descripción'])||'').trim(); if(normRef(producto).includes('SACO')){omitSaco++; return;} const palets=String(getLoose(row,['PALETS/BB','Palets/BB','PALETS BB','Palets','BB'])||'').trim(); const refReal=String(getLoose(row,['REF REAL','Ref real','PRODUCTO CLIENTE','Producto cliente'])||'').trim(); const refSap=String(getLoose(row,['REF SAP','Ref SAP','PRODUCTO SAP','Producto SAP','Material SAP'])||'').trim(); if(producto||refReal||refSap)imported.push({producto,palets,disponible,refReal,refSap});}); const agg=new Map(); imported.forEach(x=>{const k=[x.producto,x.refSap,x.refReal].map(v=>String(v||'').trim().toUpperCase()).join('|'); if(agg.has(k)){agg.get(k).disponible+=x.disponible}else agg.set(k,{...x});}); data.envasados=Array.from(agg.values()); render(); out.innerHTML=`<div class="notice ok"><b>Envasados importados correctamente.</b><br>Referencias con DISPONIBLE (t) &gt; 0 importadas: ${data.envasados.length}. Filas omitidas por contener SACO en PRODUCTO: ${omitSaco}.</div>`;}catch(err){out.innerHTML=`<div class="notice alert"><b>Error importando envasados:</b> ${esc(err.message)}</div>`;}}; const reader=new FileReader(); const ext=(file.name.split('.').pop()||'').toLowerCase(); reader.onload=()=>{try{ if(ext==='csv')finish(parseSapCsv(reader.result)); else { if(typeof XLSX==='undefined')throw new Error('No se ha cargado la librería Excel. Usa CSV si estás sin conexión.'); const wb=XLSX.read(reader.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; finish(XLSX.utils.sheet_to_json(ws,{defval:'',raw:false})); }}catch(err){out.innerHTML=`<div class="notice alert"><b>Error leyendo archivo:</b> ${esc(err.message)}</div>`;} ev.target.value='';}; if(ext==='csv')reader.readAsText(file,'UTF-8'); else reader.readAsArrayBuffer(file);
+}
+function borrarEnvasados(){data.envasados=[]; render();}
+
+function renderProductos(){
+ const tb=document.querySelector("#tablaProductos tbody");tb.innerHTML="";
+ data.productos.forEach(p=>tb.insertAdjacentHTML("beforeend",`<tr><td>${esc(p.nombre)}</td><td><input type="number" min="0" step="0.01" value="${n(p.th)}" onchange="setTh('${escjs(p.nombre)}',this.value)"></td></tr>`));
+ const sel=document.getElementById("productoEliminar");
+ if(sel){
+   const previo=sel.value;
+   sel.innerHTML=data.productos.map(p=>`<option value="${esc(p.nombre)}" ${p.nombre===previo?'selected':''}>${esc(p.nombre)}</option>`).join("");
+ }
+}
+
+
+function humedoInputHtml(h, i){
+  if(String(h.nombre).trim().toUpperCase()==="FV016 GRUESOS"){
+    return `<input type="number" min="0" step="0.01" value="${n(h.toneladas)}" disabled title="Automático desde Silo 3N">`;
+  }
+  return `<input type="number" min="0" step="0.01" value="${n(h.toneladas)}" onchange="setHumedo(${i},this.value)">`;
+}
+
+function renderHumedos(){
+ const table=document.getElementById("tablaHumedos"); if(!table)return;
+ table.innerHTML=`<thead><tr><th class="producto">Producto húmedo</th><th class="num">t/h producción</th><th class="num">Toneladas disponibles</th>${activeDays().map((d,i)=>`<th class="dia">${diaCabecera(i)}</th>`).join("")}<th class="num">Total producido</th><th class="num">Toneladas finales</th></tr></thead><tbody></tbody><tfoot></tfoot>`;
+ const tb=table.querySelector("tbody");
+ const consumosPlan={};
+ const generadosPlan={};
+ if(data.plan?.humedosRestantes){
+   data.plan.humedosRestantes.forEach(r=>{
+     consumosPlan[r.nombre]=n(r.consumido);
+     generadosPlan[r.nombre]=n(r.generado);
+   });
+ }
+ (data.humedos||[]).forEach((h,i)=>{
+   if(h.thProd===undefined)h.thProd=25;
+   if(!h.produccionDias)h.produccionDias=blankCarga();
+   const esGruesos = String(h.nombre).trim().toUpperCase()==="FV016 GRUESOS";
+   const input = esGruesos
+     ? `<input class="humedo-ton" data-row="${i}" type="number" min="0" step="0.01" value="${n(h.toneladas)}" disabled title="Automático desde Silo 3N">`
+     : `<input class="humedo-ton" data-row="${i}" type="number" min="0" step="0.01" value="${n(h.toneladas)}" onchange="setHumedo('${escjs(h.nombre)}',this.value)">`;
+   const totalProducido=activeDays().reduce((s,d)=>s+n(h.produccionDias[d]),0);
+   const consumo=n(consumosPlan[h.nombre]);
+   const generado=n(generadosPlan[h.nombre]);
+   const toneladasFinales=data.plan ? n(h.toneladas)+totalProducido+generado-consumo : null;
+   tb.insertAdjacentHTML("beforeend",`<tr><td>${esc(h.nombre)}</td><td><input class="humedo-th" type="number" min="0" step="0.1" value="${n(h.thProd)}" onchange="setThHumedo('${escjs(h.nombre)}',this.value)"></td><td>${input}</td>${activeDays().map(d=>`<td><input class="humedo-prod-dia" type="number" min="0" step="0.01" value="${n(h.produccionDias[d])}" onchange="setProduccionHumeda('${escjs(h.nombre)}','${d}',this.value)"></td>`).join("")}<td><strong>${ton(totalProducido)}</strong></td><td><strong>${data.plan?ton(toneladasFinales):'--'}</strong></td></tr>`);
+ });
+ const tf=table.querySelector("tfoot");
+ const totalesDia=activeDays().map(d=>(data.humedos||[]).reduce((s,h)=>s+n(h.produccionDias?.[d]),0));
+ const totalTodo=totalesDia.reduce((a,b)=>a+b,0);
+ const totalFinal=data.plan ? (data.humedos||[]).reduce((s,h)=>{
+   const totalProducido=activeDays().reduce((a,d)=>a+n(h.produccionDias?.[d]),0);
+   return s+n(h.toneladas)+totalProducido+n(generadosPlan[h.nombre])-n(consumosPlan[h.nombre]);
+ },0) : null;
+ tf.innerHTML=`<tr><th colspan="3">Total del día</th>${totalesDia.map(v=>`<th>${ton(v)}</th>`).join("")}<th>${ton(totalTodo)}</th><th>${data.plan?ton(totalFinal):'--'}</th></tr>`;
+}
+
+function factorPrincipalPlan(producto){
+ const up=String(producto||'').toUpperCase();
+ const frac=Math.max(0,Math.min(100,n(data.pctGruesosSubproducto)))/100;
+ return (up==='FV016 VIDRIO GUARDIAN' || up==='FV016 VIDRIO BA-GLASS') ? (1-frac) : 1;
+}
+function rellenarProduccionHumedaObjetivo(mostrarAviso=false){
+ if(!data.humedos)data.humedos=[];
+ const dias=activeDays();
+ (data.humedos||[]).forEach(h=>{if(!h.produccionDias)h.produccionDias=blankCarga(); dias.forEach(d=>h.produccionDias[d]=0);});
+
+ // 1) Calcula prioridad por consumo previsto de secado.
+ //    Si hay pocos pedidos en el periodo, se sigue produciendo todos los días para acumular húmedo de cara a la semana siguiente.
+ const necesidadPeriodo={};
+ (data.humedos||[]).forEach(h=>necesidadPeriodo[h.nombre]=0);
+ data.productos.forEach(p=>{
+   const origen=p.humedo||defaultOrigenHumedo(p.nombre);
+   addHumedoUnico(origen,{toneladas:0,thProd:25,produccionDias:blankCarga()});
+   if(necesidadPeriodo[origen]===undefined) necesidadPeriodo[origen]=0;
+   const factor=factorPrincipalPlan(p.nombre)||1;
+   const demandaSecaPeriodo=dias.reduce((s,d)=>s+cargaTon(p.nombre,d),0);
+   necesidadPeriodo[origen]+= factor>0 ? demandaSecaPeriodo/factor : demandaSecaPeriodo;
+ });
+
+ function up(v){return String(v||'').toUpperCase();}
+ function esAcidoHumedo(nombre){return up(nombre).includes('ACIDO');}
+ function grupoPreferencia(nombre){
+   const t=up(nombre);
+   if(t.includes('EXTRA') || t==='FV016 Q' || t.endsWith(' Q') || t.includes(' Q')) return 'EXTRA_Q';
+   if(t.includes('PUERTO') || t.includes('SAMCA')) return 'PUERTO_SAMCA';
+   return '';
+ }
+ function prioridadBase(nombre){
+   const t=up(nombre);
+   if(t.includes('GRUESOS')) return 0; // normalmente se genera como subproducto o viene del Silo 3N.
+   let demanda=n(necesidadPeriodo[nombre]);
+   // Prioridades de respaldo para que, aunque la semana actual tenga poca demanda, se llene todo el rango.
+   if(demanda<=0){
+     if(t.includes('SAMCA') || t.includes('PUERTO')) demanda=900;
+     else if(t.includes('EXTRA') || t==='FV016 Q' || t.includes(' Q')) demanda=800;
+     else if(t.includes('ACIDO')) demanda=300;
+     else demanda=250;
+   }
+   return demanda;
+ }
+ function campanaObjetivo(nombre){
+   if(esAcidoHumedo(nombre)) return 300;
+   return 1000;
+ }
+ function scoreCandidato(h, producidoTotal, productoActual, toneladasCampanaActual){
+   const rate=n(h.thProd); if(rate<=0) return -Infinity;
+   const base=prioridadBase(h.nombre); if(base<=0) return -Infinity;
+   let score=base - producidoTotal[h.nombre]*0.35;
+   const gp=grupoPreferencia(productoActual), gc=grupoPreferencia(h.nombre);
+   if(productoActual && productoActual!==h.nombre && gp && gp===gc) score+=5000; // EXTRA↔Q y PUERTO↔SAMCA.
+   if(productoActual===h.nombre && toneladasCampanaActual<campanaObjetivo(h.nombre)) score+=10000; // terminar campaña mínima.
+   return score;
+ }
+
+ const horasDiaHumedo=Math.max(0,n(data.horasDia)*(Math.max(0,Math.min(100,n(data.dispHumedo)))/100));
+ const producidoTotal={}; (data.humedos||[]).forEach(h=>producidoTotal[h.nombre]=0);
+ const avisos=[];
+ let productoActual='';
+ let toneladasCampanaActual=0;
+
+ dias.forEach((d,di)=>{
+   let horasRestantes=horasDiaHumedo;
+   let guard=0;
+   while(horasRestantes>0.0001 && guard++<100){
+     let hActual=productoActual ? (data.humedos||[]).find(h=>h.nombre===productoActual) : null;
+     // Si hay campaña abierta, se continúa aunque no se alcance el mínimo en el mismo día.
+     if(!hActual || n(hActual.thProd)<=0 || toneladasCampanaActual>=campanaObjetivo(hActual.nombre)-0.001){
+       const candidatos=(data.humedos||[])
+         .filter(h=>n(h.thProd)>0 && prioridadBase(h.nombre)>0)
+         .map(h=>({h, score:scoreCandidato(h,producidoTotal,productoActual,toneladasCampanaActual)}))
+         .sort((a,b)=>b.score-a.score);
+       if(!candidatos.length) break;
+       hActual=candidatos[0].h;
+       if(productoActual!==hActual.nombre){productoActual=hActual.nombre; toneladasCampanaActual=0;}
+     }
+
+     const rate=n(hActual.thProd);
+     if(rate<=0) break;
+     const objetivoCamp=campanaObjetivo(hActual.nombre);
+     const pendienteCamp=Math.max(0,objetivoCamp-toneladasCampanaActual);
+     let toneladas=Math.min(horasRestantes*rate, pendienteCamp);
+     // Para Ácido, la campaña es siempre de 300 t. Para el resto se llega a 1.000 t aunque sean varios días.
+     if(toneladas<=0.0001){toneladasCampanaActual=objetivoCamp; continue;}
+     toneladas=Math.round(toneladas*100)/100;
+     hActual.produccionDias[d]=n(hActual.produccionDias[d])+toneladas;
+     producidoTotal[hActual.nombre]=n(producidoTotal[hActual.nombre])+toneladas;
+     toneladasCampanaActual+=toneladas;
+     horasRestantes-=toneladas/rate;
+     if(toneladasCampanaActual>=objetivoCamp-0.001){
+       // Cierra campaña. En el siguiente ciclo se elegirá el producto más conveniente.
+       toneladasCampanaActual=objetivoCamp;
+     }
+   }
+   if(horasRestantes>0.05) avisos.push(`${diaCabecera(di).replace(/<br>.*/,' ')}: quedan ${horasTxt(horasRestantes)} sin asignar por falta de productos con t/h válida.`);
+ });
+
+ data.plan=null;
+ if(mostrarAviso){
+   const detalle=(data.humedos||[])
+     .map(h=>({nombre:h.nombre,total:dias.reduce((s,d)=>s+n(h.produccionDias?.[d]),0)}))
+     .filter(x=>x.total>0)
+     .sort((a,b)=>b.total-a.total)
+     .map(x=>`${x.nombre}: ${ton(x.total)}`)
+     .join('\n');
+   const msg=(avisos.length ? 'Producción húmeda rellenada con avisos:\n'+avisos.slice(0,12).join('\n')+'\n\n' : '')+
+     'Producción húmeda rellenada todos los días desde la fecha inicial hasta la final.\n'+
+     'Criterios aplicados:\n'+
+     '• Se usan 24 h/día × factor de servicio de planta.\n'+
+     '• Se acumula húmedo para afrontar la semana siguiente.\n'+
+     '• Campaña mínima general: 1.000 t, permitiendo continuar campaña entre días.\n'+
+     '• Si no hay suficiente producto objetivo, se permite campaña mínima de 500 t.\n'+
+     '• FV016 ÁCIDO: campaña fija mínima y máxima de 300 t.\n'+
+     '• Se favorecen cambios FV016 EXTRA ↔ FV016 Q y FV016 PUERTO ↔ FV016 SAMCA.\n'+
+     '• El mineral producido cada día queda disponible para secar desde el día siguiente.\n\n'+
+     'Producción prevista:\n'+(detalle||'Sin producción asignada.');
+   alert(msg);
+ }
+ render();
+}
+function limpiarProduccionHumeda(){(data.humedos||[]).forEach(h=>{h.produccionDias=blankCarga();}); data.plan=null; render();}
+function proporcionMezclaSamca(){
+ const lS=n(data.mezclaSamca?.leySamca2), lO=n(data.mezclaSamca?.leySamcaObj), lG=n(data.mezclaSamca?.leyGruesos);
+ if(lG===lS) return {ok:false, msg:"La ley de SAMCA2 y GRUESOS no puede ser igual.", fracSamca2:0, fracGruesos:0};
+ const fracGruesos=(lO-lS)/(lG-lS);
+ const fracSamca2=1-fracGruesos;
+ if(fracGruesos<0 || fracGruesos>1 || fracSamca2<0 || fracSamca2>1) return {ok:false, msg:"La ley objetivo debe estar entre la ley de SAMCA2 y la ley de GRUESOS.", fracSamca2, fracGruesos};
+ return {ok:true, msg:"Correcto", fracSamca2, fracGruesos};
+}
+function humedoTon(nombre){return n(getHumedo(nombre)?.toneladas)}
+function samcaMezclaObtenible(){
+ const pr=proporcionMezclaSamca(); if(!pr.ok) return 0;
+ const porSamca2=pr.fracSamca2>0 ? humedoTon("FV016 SAMCA2")/pr.fracSamca2 : Infinity;
+ const porGruesos=pr.fracGruesos>0 ? humedoTon("FV016 GRUESOS")/pr.fracGruesos : Infinity;
+ return Math.min(porSamca2, porGruesos);
+}
+function gcdInt(a,b){a=Math.abs(Math.round(a)); b=Math.abs(Math.round(b)); while(b){const t=b; b=a%b; a=t;} return a||1;}
+function proporcionTextoMezcla(pr){
+ if(!pr.ok) return "No calculable";
+ // Se escala a 100 partes para obtener una relación sencilla, por ejemplo 6:1, 5:1, 4:1, etc.
+ let a=Math.round(pr.fracSamca2*100);
+ let b=Math.round(pr.fracGruesos*100);
+ const g=gcdInt(a,b);
+ a=a/g; b=b/g;
+ return `${a} : ${b}`;
+}
+function renderMezclaSamca(){
+ const tb=document.querySelector("#tablaMezclaSamca tbody"); if(!tb)return; tb.innerHTML="";
+ const pr=proporcionMezclaSamca(), obtenible=pr.ok ? samcaMezclaObtenible() : 0;
+ const consumo=pr.ok ? `${ton(pr.fracSamca2*100)} SAMCA2 + ${ton(pr.fracGruesos*100)} GRUESOS` : "No calculable";
+ const proporcion=proporcionTextoMezcla(pr);
+ tb.insertAdjacentHTML("beforeend",`<tr><td class="${pr.ok?'ok':'bad'}">${pct(pr.fracSamca2*100)}</td><td class="${pr.ok?'ok':'bad'}">${pct(pr.fracGruesos*100)}</td><td><strong>${esc(proporcion)}</strong></td><td><strong>${ton(obtenible)}</strong></td><td>${consumo}</td><td class="${pr.ok?'ok':'bad'}">${esc(pr.msg)}</td></tr>`);
+}
+
+function renderOrigenSeco(){
+ const tb=document.querySelector("#tablaOrigenSeco tbody"); if(!tb)return; tb.innerHTML="";
+ data.productos.forEach(p=>tb.insertAdjacentHTML("beforeend",`<tr><td>${esc(p.nombre)}</td><td><select onchange="setOrigenSeco('${escjs(p.nombre)}',this.value)">${opcionHumedos(p.humedo)}</select></td></tr>`));
+}
+
+function renderSilos(){
+ const tb=document.querySelector("#tablaSilos tbody");tb.innerHTML="";
+ data.silos.forEach((s,i)=>{
+  const max=n(s.maximo), act=n(s.actual), hue=max-act, fill=max>0?Math.max(0,Math.min(100,act/max*100)):0;
+  tb.insertAdjacentHTML("beforeend",`<tr>
+   <td><input value="${esc(s.nombre)}" onchange="setSilo('${s.id}','nombre',this.value)"></td>
+   <td><select onchange="setSilo('${s.id}','producto',this.value)">${opcionProductos(s.producto)}</select></td>
+   <td><input type="number" min="0" step="1" value="${max}" onchange="setSilo('${s.id}','maximo',this.value)"></td>
+   <td><input class="silo-actual" data-row="${i}" data-id="${s.id}" type="number" min="0" step="0.01" value="${act}" onchange="setSilo('${s.id}','actual',this.value)"></td>
+   <td class="${hue<0?'bad':''}">${ton(hue)}</td>
+   <td><div class="barra-fondo"><div class="barra" style="width:${fill}%"></div></div><div class="muted">${pct(fill)}</div></td>
+  </tr>`);
+ });
+}
+
+function renderCargas(){
+ const table=document.getElementById("tablaCargas"); if(!table)return;
+ table.innerHTML=`<thead><tr><th class="producto">Producto</th>${activeDays().map((d,i)=>`<th class="dia">${diaCabecera(i,'cam.')}</th>`).join("")}<th>Total cam.</th><th>Toneladas periodo</th><th>Stock actual</th><th>Déficit inicial</th></tr></thead><tbody></tbody>`;
+ const tb=table.querySelector("tbody");
+ data.productos.forEach((p,ri)=>{
+  const totalCam=activeDays().reduce((s,d)=>s+cargaCamiones(p.nombre,d),0);
+  const carga=cargaSemana(p.nombre), stock=stockProducto(p.nombre), deficit=Math.max(0,carga-stock);
+  tb.insertAdjacentHTML("beforeend",`<tr>
+   <td>${esc(p.nombre)}</td>
+   ${activeDays().map((d,ci)=>`<td><input class="carga-dia" data-row="${ri}" data-col="${ci}" type="number" min="0" step="1" value="${cargaCamiones(p.nombre,d)}" onchange="setCarga('${escjs(p.nombre)}','${d}',this.value)"></td>`).join("")}
+   <td><strong>${num(totalCam)}</strong></td><td><strong>${ton(carga)}</strong></td><td>${ton(stock)}</td><td class="${deficit>0?'bad':'ok'}">${ton(deficit)}</td>
+  </tr>`);
+ });
+}
+
+function renderVaciados(){
+ const table=document.getElementById("tablaVaciados");
+ const names=productNames();
+ table.innerHTML=`<thead><tr><th>Desde \\ hacia</th>${names.map(n=>`<th class="producto">${esc(n)}</th>`).join("")}</tr></thead><tbody></tbody>`;
+ const tb=table.querySelector("tbody");
+ names.forEach((a,ri)=>{
+  tb.insertAdjacentHTML("beforeend",`<tr><th>${esc(a)}</th>${names.map((b,ci)=>`<td><input class="vaciado" data-row="${ri}" data-col="${ci}" type="number" min="0" step="0.05" value="${n(data.vaciados[a]?.[b])}" onchange="setVaciado('${escjs(a)}','${escjs(b)}',this.value)"></td>`).join("")}</tr>`);
+ });
+}
+
+function renderDobleSilo(){
+ const tb=document.querySelector("#tablaDobleSilo tbody");
+ if(!tb) return;
+ tb.innerHTML="";
+ DOBLE_N.forEach(nn=>{
+  tb.insertAdjacentHTML("beforeend",`<tr>
+    <th>${esc(nn)}</th>
+    ${DOBLE_V.map(vv=>`<td><select onchange="setDoblePermitido('${escjs(nn)}','${escjs(vv)}',this.value)">
+      <option value="true" ${data.dobleMatrix?.[nn]?.[vv] ? "selected" : ""}>Permitido</option>
+      <option value="false" ${!data.dobleMatrix?.[nn]?.[vv] ? "selected" : ""}>No permitido</option>
+    </select></td>`).join("")}
+  </tr>`);
+ });
+}
+
+function renderResumen(){
+ const cap=data.silos.reduce((s,x)=>s+n(x.maximo),0), stock=data.silos.reduce((s,x)=>s+n(x.actual),0), hue=cap-stock;
+ const carga=data.productos.reduce((s,p)=>s+cargaSemana(p.nombre),0);
+ const secado=data.plan?data.plan.resumen.reduce((s,d)=>s+d.secadas,0):0;
+ const hSecado=data.plan?data.plan.resumen.reduce((s,d)=>s+d.hSecado,0):0;
+ const mediaTh=hSecado>0 ? secado/hSecado : 0;
+ const excedido=data.silos.some(s=>n(s.actual)>n(s.maximo));
+ document.getElementById("resCap").textContent=ton(cap);
+ document.getElementById("resStock").textContent=ton(stock);
+ document.getElementById("resHueco").textContent=ton(hue);
+ document.getElementById("resCarga").textContent=ton(carga);
+ document.getElementById("resSecado").textContent=ton(secado);
+ const resMedia=document.getElementById("resMediaTh");
+ if(resMedia) resMedia.textContent=thTxt(mediaTh);
+ const e=document.getElementById("resEstado"); e.className="";
+ if(excedido){e.textContent="Silo excedido";e.classList.add("bad")}
+ else{e.textContent="Correcto";e.classList.add("ok")}
+}
+
+
+function humedoInputHtml(h, i){
+  if(String(h.nombre).trim().toUpperCase()==="FV016 GRUESOS"){
+    return `<input type="number" min="0" step="0.01" value="${n(h.toneladas)}" disabled title="Automático desde Silo 3N">`;
+  }
+  return `<input type="number" min="0" step="0.01" value="${n(h.toneladas)}" onchange="setHumedo(${i},this.value)">`;
+}
+
+function renderHumedosRestantes(){
+ const tb=document.querySelector("#tablaHumedosRestantes tbody");
+ if(!tb) return;
+ tb.innerHTML="";
+ const rows = data.plan?.humedosRestantes || (data.humedos||[]).map(h=>({nombre:h.nombre,inicial:n(h.toneladas),consumido:0,generado:0,restante:n(h.toneladas)}));
+ rows.forEach(r=>{
+   const cls = n(r.restante)<=0 && n(r.consumido)>0 ? "warn" : "";
+   tb.insertAdjacentHTML("beforeend",`<tr><td>${esc(r.nombre)}</td><td>${ton(r.inicial)}</td><td>${ton(r.consumido)}</td><td>${ton(r.generado||0)}</td><td class="${cls}"><strong>${ton(r.restante)}</strong></td></tr>`);
+ });
+}
+
+
+function tablaEstadoSilosDia(estado){
+ if(!estado || !estado.silos) return `<p class="muted">Sin estado de silos calculado.</p>`;
+ const rows = estado.silos.map(s=>{
+   const act=n(s.actual), hue=n(s.maximo)-act;
+   return `<tr><td>${esc(s.nombre)}</td><td>${esc(s.producto)}</td><td>${ton(act)}</td><td class="${hue<0?'bad':''}">${ton(hue)}</td></tr>`;
+ }).join("");
+ return `<div><h4>Estado final de silos secos</h4><div class="scroll"><table><thead><tr><th>Silo</th><th>Producto</th><th>Toneladas</th><th>Hueco</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function tablaEstadoHumedosDia(estado){
+ if(!estado || !estado.humedos) return `<p class="muted">Sin estado de húmedos calculado.</p>`;
+ const rows = estado.humedos.map(h=>`<tr><td>${esc(h.nombre)}</td><td><strong>${ton(h.toneladas)}</strong></td></tr>`).join("");
+ return `<div><h4>Estado final de productos húmedos</h4><div class="scroll"><table><thead><tr><th>Producto húmedo</th><th>Toneladas</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function humedoOrigenParaSeco(productoSeco){
+ const cfg=(data.origenSecoHumedo||data.secoHumedo||data.mapaSecoHumedo||{})[productoSeco];
+ return cfg || productoSeco;
+}
+
+function sugerenciaProduccionHumedoDia(estado){
+ if(!estado || !estado.humedos) return "";
+
+ const unLote = n(data.minLote);
+ const dosLotes = 2*n(data.minLote);
+ const sugerencias=[];
+ const stockHumedo={};
+ estado.humedos.forEach(h=>stockHumedo[h.nombre]=n(h.toneladas));
+
+ function addSug(txt){
+   if(!sugerencias.includes(txt)) sugerencias.push(txt);
+ }
+
+ // FV016 ACIDO: avisar solo cuando quede menos de 1 lote húmedo.
+ if(stockHumedo["FV016 ACIDO"]!==undefined && stockHumedo["FV016 ACIDO"]<unLote){
+   addSug(`FV016 ACIDO: producir húmedo FV016 ACIDO. Disponible ${ton(stockHumedo["FV016 ACIDO"])}; objetivo mínimo ${ton(unLote)}.`);
+ }
+
+ // FV016 SAMCA directo: avisar cuando quede menos de 2 lotes.
+ if(stockHumedo["FV016 SAMCA"]!==undefined && stockHumedo["FV016 SAMCA"]<dosLotes){
+   addSug(`FV016 SAMCA: producir húmedo FV016 SAMCA. Disponible ${ton(stockHumedo["FV016 SAMCA"])}; objetivo mínimo ${ton(dosLotes)}.`);
+ }
+
+ // FV016 SAMCA2: avisar cuando quede menos de 2 lotes.
+ if(stockHumedo["FV016 SAMCA2"]!==undefined && stockHumedo["FV016 SAMCA2"]<dosLotes){
+   addSug(`FV016 SAMCA2: producir húmedo FV016 SAMCA2 para poder preparar FV016 SAMCA con mezcla. Disponible ${ton(stockHumedo["FV016 SAMCA2"])}; objetivo mínimo ${ton(dosLotes)}.`);
+ }
+
+ // Resto de productos húmedos: menos de 2 lotes, excluyendo FV016 GRUESOS, FV016 ACIDO, FV016 SAMCA y FV016 SAMCA2.
+ data.productos.forEach(p=>{
+   const seco=p.nombre;
+   const origen=humedoOrigenParaSeco(seco);
+
+   if(!origen) return;
+   if(origen==="FV016 GRUESOS") return;
+   if(["FV016 ACIDO","FV016 SAMCA","FV016 SAMCA2"].includes(origen)) return;
+
+   if(stockHumedo[origen]!==undefined && n(stockHumedo[origen])<dosLotes){
+     addSug(`${seco}: producir húmedo ${origen}. Disponible ${ton(stockHumedo[origen])}; objetivo mínimo ${ton(dosLotes)}.`);
+   }
+ });
+
+ if(!sugerencias.length) return "";
+ return `<div class="sugerencia-humedo"><strong>Sugerencia de producción húmeda:</strong><br>${sugerencias.map(s=>`• ${esc(s)}`).join("<br>")}</div>`;
+}
+
+function renderPlan(){
+ const cont=document.getElementById("plan");
+ const tb=document.querySelector("#tablaResumenDia tbody"); tb.innerHTML="";
+ renderHumedosRestantes();
+ if(!data.plan){cont.innerHTML='<p class="muted">Pulse “Calcular previsión” para generar el plan del periodo.</p>';return}
+ cont.innerHTML="";
+ let acumSecado=0;
+ let acumParada=0;
+ let acumTon=0;
+ data.plan.resumen.forEach((r,idx)=>{
+  const hParadaProgramada=(data.paradas||[]).filter(p=>p.day===idx).reduce((sum,p)=>{const a=String(p.start||'00:00').split(':').map(Number); const b=String(p.end||'00:00').split(':').map(Number); return sum+Math.max(0,(b[0]+b[1]/60)-(a[0]+a[1]/60));},0);
+  acumSecado+=n(r.hSecado);
+  acumParada+=n(r.hParado)+hParadaProgramada;
+  acumTon+=n(r.secadas);
+  const mediaAcumulada = acumSecado>0 ? acumTon/acumSecado : 0;
+  const paradasDia=(data.paradas||[]).filter(p=>p.day===idx).map(p=>`${p.desc}: ${p.start}-${p.end}`).join(' | ');
+  const obsFinal=[r.obs||'',paradasDia].filter(Boolean).join(' | ');
+  tb.insertAdjacentHTML("beforeend",`<tr><td>${diaCabecera(idx).replace(/<br>.*/,'')}</td><td>${ton(r.secadas)}</td><td>${horasTxt(acumSecado)}</td><td>${horasTxt(r.hVaciado)}</td><td>${horasTxt(acumParada)}</td><td>${thTxt(mediaAcumulada)}</td><td>${esc(obsFinal)}</td></tr>`);
+ });
+ data.plan.dias.forEach((dia,idx)=>{
+  const rows = dia.tareas.length ? dia.tareas.map(t=>`<tr>
+    <td>${esc(t.producto)}</td><td>${ton(t.toneladas)}</td><td>${horasTxt(t.horas)}</td><td>${esc(t.destino)}</td><td>${esc(t.nota)}</td>
+  </tr>`).join("") : `<tr><td colspan="5" class="muted">Sin producción planificada</td></tr>`;
+  const estado = data.plan.estadosDia ? data.plan.estadosDia[idx] : null;
+  cont.insertAdjacentHTML("beforeend",`<div class="plan-dia"><h3>${diaCabecera(idx).replace(/<br>.*/,'')}</h3>
+    <div class="scroll"><table><thead><tr><th>Producto</th><th>Toneladas</th><th>Tiempo</th><th>Destino silo</th><th>Nota</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="estado-dia-grid">
+      ${tablaEstadoSilosDia(estado)}
+      ${tablaEstadoHumedosDia(estado)}
+    </div>
+    ${sugerenciaProduccionHumedoDia(estado)}
+  </div>`);
+ });
+ if(data.plan.alertas.length){
+  cont.insertAdjacentHTML("beforeend",`<div class="card highlight"><h3>Alertas</h3>${data.plan.alertas.map(a=>`<p class="bad">${esc(a)}</p>`).join("")}</div>`);
+ }
+}
+
+function setDoblePermitido(nn,vv,val){
+ if(!data.dobleMatrix)data.dobleMatrix=defaultDobleMatrix();
+ if(!data.dobleMatrix[nn])data.dobleMatrix[nn]={};
+ data.dobleMatrix[nn][vv]=(val==="true");
+ data.plan=null;
+ render();
+}
+function setParam(k,v){data[k]=n(v);data.plan=null;render()}
+function setParamBool(k,v){data[k]=(v==="true");data.plan=null;render()}
+function setTh(nombre,v){prod(nombre).th=n(v);data.plan=null;render()}
+function setHumedo(nombre,v){
+ if(String(nombre||"").trim().toUpperCase()==="FV016 GRUESOS"){
+   syncGruesosHumedoDesdeSilo3N();
+   data.plan=null;
+   render();
+   return;
+ }
+ const h=(data.humedos||[]).find(x=>x.nombre===nombre);
+ if(!h)return;
+ h.toneladas=n(v);
+ data.plan=null;
+ render();
+}
+function setProduccionHumeda(nombre,dia,v){const h=getHumedo(nombre); if(!h)return; if(!h.produccionDias)h.produccionDias=blankCarga(); h.produccionDias[dia]=n(v); data.plan=null; render()}
+function setThHumedo(nombre,v){const h=getHumedo(nombre); if(!h)return; h.thProd=n(v); data.plan=null; render()}
+function setOrigenSeco(nombre,humedo){const p=prod(nombre); if(!p)return; p.humedo=humedo; data.plan=null; render()}
+function setMezclaLey(campo,v){if(!data.mezclaSamca)data.mezclaSamca={leySamca2:10.60, leySamcaObj:10.80, leyGruesos:12.00}; data.mezclaSamca[campo]=n(v); data.plan=null; render()}
+function setSilo(id,campo,v){const s=data.silos.find(x=>x.id===id); if(!s)return; s[campo]=(campo==="maximo"||campo==="actual")?n(v):v; data.plan=null; render()}
+function setCarga(nombre,dia,v){if(!data.cargas[nombre])data.cargas[nombre]=blankCarga();data.cargas[nombre][dia]=n(v);data.plan=null;render()}
+function setVaciado(a,b,v){if(!data.vaciados[a])data.vaciados[a]={};data.vaciados[a][b]=n(v);data.plan=null;render()}
+
+
+function enfocarSelector(selector) {
+ const el = document.querySelector(selector);
+ if (el) {
+   el.focus();
+   if (typeof el.select === "function") el.select();
+ }
+}
+
+function focoSiloActual(row) {
+ const total = document.querySelectorAll(".silo-actual").length;
+ const nextRow = total ? (row + 1) % total : 0;
+ setTimeout(() => enfocarSelector(`.silo-actual[data-row="${nextRow}"]`), 0);
+}
+
+function focoCarga(row, col) {
+ const totalRows = data.productos.length;
+ let nextRow = row;
+ let nextCol = col + 1;
+
+ if (nextCol >= activeDays().length) {
+   nextCol = 0;
+   nextRow = row + 1;
+ }
+
+ if (nextRow >= totalRows) nextRow = 0;
+
+ setTimeout(() => enfocarSelector(`.carga-dia[data-row="${nextRow}"][data-col="${nextCol}"]`), 0);
+}
+
+function focoVaciado(row, col) {
+ const totalRows = data.productos.length;
+ const totalCols = data.productos.length;
+
+ let nextRow = row;
+ let nextCol = col + 1;
+
+ if (nextCol >= totalCols) {
+   nextCol = 0;
+   nextRow = row + 1;
+ }
+
+ if (nextRow >= totalRows) {
+   nextRow = 0;
+   nextCol = 0;
+ }
+
+ setTimeout(() => enfocarSelector(`.vaciado[data-row="${nextRow}"][data-col="${nextCol}"]`), 0);
+}
+
+document.addEventListener("keydown", function(e) {
+ if (e.key !== "Enter") return;
+
+ const el = e.target;
+
+ // 1) SILOS - columna Actual:
+ // Enter baja a la fila siguiente, misma columna. Desde la última fila vuelve a la primera.
+ if (el.classList.contains("silo-actual")) {
+   e.preventDefault();
+
+   const row = Number(el.dataset.row) || 0;
+   const id = el.dataset.id;
+   const silo = data.silos.find(x => x.id === id);
+
+   if (silo) silo.actual = n(el.value);
+
+   data.plan = null;
+   render();
+   focoSiloActual(row);
+   return;
+ }
+
+ // 2) CARGAS:
+ // Avanza de un día al siguiente.
+ // Desde el último día pasa al primero de la siguiente fila.
+ // Desde la última fila vuelve al inicio.
+ if (el.classList.contains("carga-dia")) {
+   e.preventDefault();
+
+   const row = Number(el.dataset.row) || 0;
+   const col = Number(el.dataset.col) || 0;
+   const producto = data.productos[row]?.nombre;
+   const dia = activeDays()[col];
+
+   if (producto && dia) {
+     if (!data.cargas[producto]) data.cargas[producto] = blankCarga();
+     data.cargas[producto][dia] = n(el.value);
+   }
+
+   data.plan = null;
+   render();
+   focoCarga(row, col);
+   return;
+ }
+
+ // 3) VACIADOS:
+ // Avanza por columnas dentro de la misma fila.
+ // Desde última columna pasa a primera columna de la fila siguiente.
+ // Desde última columna de última fila vuelve al inicio de la primera fila.
+ if (el.classList.contains("vaciado")) {
+   e.preventDefault();
+
+   const row = Number(el.dataset.row) || 0;
+   const col = Number(el.dataset.col) || 0;
+   const desde = data.productos[row]?.nombre;
+   const hacia = data.productos[col]?.nombre;
+
+   if (desde && hacia) {
+     if (!data.vaciados[desde]) data.vaciados[desde] = {};
+     data.vaciados[desde][hacia] = n(el.value);
+   }
+
+   data.plan = null;
+   render();
+   focoVaciado(row, col);
+   return;
+ }
+});
+
+function addProducto(){
+ const nombre=prompt("Nombre del nuevo producto:"); if(!nombre)return;
+ const limpio=nombre.trim().toUpperCase(); if(!limpio)return;
+ if(prod(limpio)){alert("Ese producto ya existe.");return}
+ data.productos.push({nombre:limpio,th:25,humedo:defaultOrigenHumedo(limpio)}); data.cargas[limpio]=blankCarga();
+ data.vaciados[limpio]={}; productNames().forEach(p=>{data.vaciados[limpio][p]=(p===limpio?0:0.5); if(!data.vaciados[p])data.vaciados[p]={}; data.vaciados[p][limpio]=(p===limpio?0:0.5);});
+ data.plan=null; render();
+}
+function delProducto(){
+ const sel=document.getElementById("productoEliminar");
+ const nombre=sel?.value || "";
+ if(!nombre){alert("Selecciona un producto para eliminar.");return;}
+ const limpio=nombre.trim().toUpperCase(); if(!prod(limpio)){alert("No existe.");return}
+ if(data.silos.some(s=>s.producto===limpio)){alert("No se puede eliminar: está asignado a algún silo.");return}
+ if(!confirm(`¿Eliminar el producto ${limpio}?`))return;
+ data.productos=data.productos.filter(p=>p.nombre!==limpio); delete data.cargas[limpio]; delete data.vaciados[limpio]; Object.keys(data.vaciados).forEach(k=>delete data.vaciados[k][limpio]);
+ data.plan=null; render();
+}
+function resetear(){if(!confirm("¿Restaurar valores por defecto?"))return;data=defaults();render();}
+
+function anularPrevision(){
+ data.plan=null;
+
+ const hr=document.getElementById("humedosRestantes");
+ if(hr){
+   hr.innerHTML="";
+   hr.style.display="none";
+ }
+
+ render();
+ alert("Previsión anulada.");
+}
+
+function exportarJSON(){data.jsonInfo=data.jsonInfo||{}; data.jsonInfo.fileName='planificador_fv016_optimo.json'; data.jsonInfo.lastUpdate=new Date().toLocaleString('es-ES'); const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=data.jsonInfo.fileName;a.click();URL.revokeObjectURL(a.href); save(); updateJsonInfo();}
+function importarJSON(ev){const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{try{const imp=JSON.parse(e.target.result); if(!imp.productos||!imp.silos)throw new Error(); data=normalize(imp); data.jsonInfo=data.jsonInfo||{}; data.jsonInfo.fileName=f.name; data.jsonInfo.lastUpdate=new Date().toLocaleString('es-ES'); render()}catch{alert("No se pudo importar el JSON.")}}; r.readAsText(f); ev.target.value="";}
+async function seleccionarCarpetaJSON(){
+ try{
+   if(!window.showDirectoryPicker){
+     alert('Tu navegador no permite seleccionar carpeta directamente. Usa Exportar JSON para guardar el archivo.');
+     return;
+   }
+   const h=await window.showDirectoryPicker({mode:'readwrite'});
+   const ok=await ensureReadWritePermission(h);
+   if(!ok){alert('No se ha concedido permiso para leer y guardar en la carpeta JSON.');return;}
+   jsonDirectoryHandle=h;
+   data.jsonInfo=data.jsonInfo||{};
+   data.jsonInfo.folderName=h.name||'Carpeta seleccionada';
+   data.jsonInfo.fileName=data.jsonInfo.fileName||JSON_FILE_NAME;
+   localStorage.setItem(KEY,JSON.stringify(data));
+   updateJsonInfo();
+
+   const encontrado=await buscarArchivoJsonEnCarpeta(h);
+   if(encontrado){
+     const cargar=confirm('Se ha encontrado el archivo JSON "'+encontrado.name+'" en la carpeta seleccionada.\n\n¿Quieres importarlo ahora?');
+     if(cargar){
+       try{
+         await cargarJSONDesdeHandle(encontrado.handle);
+         alert('JSON importado desde la carpeta seleccionada: '+encontrado.name+'\nA partir de ahora los cambios se guardarán automáticamente en esa carpeta.');
+       }catch(e){
+         console.error(e);
+         alert('Se encontró un JSON, pero no se pudo importar. Se mantendrán los datos actuales y se guardarán automáticamente en la carpeta seleccionada.');
+         await guardarJSONEnCarpeta(false);
+       }
+     }else{
+       await guardarJSONEnCarpeta(false);
+       alert('Carpeta JSON seleccionada. No se ha importado el JSON existente. A partir de ahora los cambios se guardarán automáticamente en esa carpeta.');
+     }
+   }else{
+     await guardarJSONEnCarpeta(false);
+     alert('Carpeta JSON seleccionada. No había JSON previo, por lo que se ha creado '+(data.jsonInfo.fileName||JSON_FILE_NAME)+'.');
+   }
+ }catch(e){
+   if(e && e.name!=='AbortError'){console.error(e); alert('No se pudo seleccionar la carpeta JSON.');}
+ }
+}
+function imprimirResumenPrevision(){document.body.classList.add('print-summary');document.body.classList.remove('print-tables');window.print();setTimeout(()=>document.body.classList.remove('print-summary'),500)}
+function imprimirCargasEnvasadosSilos(){document.body.classList.add('print-tables');document.body.classList.remove('print-summary');window.print();setTimeout(()=>document.body.classList.remove('print-tables'),500)}
+function borrarComparacionEscenarios(){data.comparacionEscenarios=null; const out=document.getElementById('escenarioLoteMinimo'); if(out)out.innerHTML='';}
+function comprobarEscenariosLoteMinimo(){
+ const escenarios=[28,50,100,150,180,400]; const min0=data.minLote, max0=data.maxLote; const rows=[];
+ escenarios.forEach(v=>{data.minLote=v; if(n(data.maxLote)<v)data.maxLote=v; calcularPlan(); const p=data.plan; const sec=p?p.resumen.reduce((s,r)=>s+n(r.secadas),0):0; const hsec=p?p.resumen.reduce((s,r)=>s+n(r.hSecado),0):0; const hv=p?p.resumen.reduce((s,r)=>s+n(r.hVaciado),0):0; const hp=p?p.resumen.reduce((s,r)=>s+n(r.hParado),0):0; rows.push({v,sec,hsec,hv,hp,media:hsec?sec/hsec:0,alertas:p?.alertas?.length||0});});
+ data.minLote=min0; data.maxLote=max0; calcularPlan();
+ data.comparacionEscenarios=rows; save();
+}
+function diaKeyFromSelect(id){return activeDays()[Number(document.getElementById(id)?.value)||0]}
+function anadirPedidoYReplanificar(){const p=document.getElementById('extraProduct').value; const d=diaKeyFromSelect('extraDay'); if(String(p).startsWith('ENV|')){const e=data.envasados[Number(String(p).split('|')[1])]; const ref=e?.refSap||e?.refReal||e?.producto; if(!ref)return; if(!data.envasadosPendientes[ref])data.envasadosPendientes[ref]=blankCarga(); data.envasadosPendientes[ref][d]=n(data.envasadosPendientes[ref][d])+n(document.getElementById('extraPackTons').value);}else if(String(p).startsWith('ENVREF|')){const ref=envRefFromKey(p); if(!data.envasadosPendientes[ref])data.envasadosPendientes[ref]=blankCarga(); data.envasadosPendientes[ref][d]=n(data.envasadosPendientes[ref][d])+n(document.getElementById('extraPackTons').value);}else{if(!data.cargas[p])data.cargas[p]=blankCarga(); data.cargas[p][d]=n(data.cargas[p][d])+n(document.getElementById('extraTrucks').value);} calcularPlan(); document.getElementById('extraResult').innerHTML='<div class="notice ok"><b>Pedido añadido y planificación recalculada.</b></div>';}
+function anularCamionesYReplanificar(){
+ const p=document.getElementById('cancelProduct').value; const d=diaKeyFromSelect('cancelDay');
+ if(String(p).startsWith('ENV|')){
+   const e=data.envasados[Number(String(p).split('|')[1])]; const ref=e?.refSap||e?.refReal||e?.producto; if(!ref)return;
+   if(!data.envasadosPendientes[ref])data.envasadosPendientes[ref]=blankCarga();
+   const q=n(document.getElementById('cancelPackTons')?.value);
+   data.envasadosPendientes[ref][d]=Math.max(0,n(data.envasadosPendientes[ref][d])-q);
+ } else if(String(p).startsWith('ENVREF|')){
+   const ref=envRefFromKey(p); if(!data.envasadosPendientes[ref])data.envasadosPendientes[ref]=blankCarga();
+   const q=n(document.getElementById('cancelPackTons')?.value);
+   data.envasadosPendientes[ref][d]=Math.max(0,n(data.envasadosPendientes[ref][d])-q);
+ } else {
+   if(!data.cargas[p])data.cargas[p]=blankCarga();
+   const q=n(document.getElementById('cancelTrucks').value);
+   data.cargas[p][d]=Math.max(0,n(data.cargas[p][d])-q);
+ }
+ calcularPlan(); document.getElementById('cancelResult').innerHTML='<div class="notice ok"><b>Pedido anulado y planificación recalculada.</b></div>';
+}
+function comprobarDisponibilidadExtra(){const p=document.getElementById('extraProduct').value; const di=Number(document.getElementById('extraDay')?.value)||0; const out=document.getElementById('extraResult'); if(String(p).startsWith('ENV|')){const e=data.envasados[Number(String(p).split('|')[1])]; const pedido=n(document.getElementById('extraPackTons').value); const stock=n(e?.disponible); out.innerHTML=stock>=pedido?`<div class="notice ok"><b>Disponible.</b><br>Quedan ${ton(stock-pedido)} de esa referencia.</div>`:`<div class="notice alert"><b>No disponible.</b><br>Faltan ${ton(pedido-stock)} de esa referencia.</div>`;return;} if(String(p).startsWith('ENVREF|')){const ref=envRefFromKey(p); const pedido=n(document.getElementById('extraPackTons').value); const stock=stockEnvasado(ref); out.innerHTML=stock>=pedido?`<div class="notice ok"><b>Disponible.</b><br>Quedan ${ton(stock-pedido)} de esa referencia.</div>`:`<div class="notice alert"><b>No disponible.</b><br>Faltan ${ton(pedido-stock)} de esa referencia.</div>`;return;} let disponible=stockProducto(p); if(data.plan){for(let i=0;i<=di;i++){(data.plan.dias[i]?.tareas||[]).forEach(t=>{if(t.producto===p)disponible+=n(t.toneladas);}); disponible-=cargaTon(p,activeDays()[i]);}} const pedido=n(document.getElementById('extraTrucks').value)*n(data.tonCamion); out.innerHTML=disponible>=pedido?`<div class="notice ok"><b>Disponible.</b><br>Después del pedido quedarían ${ton(disponible-pedido)} de ${esc(p)}.</div>`:`<div class="notice alert"><b>No disponible ese día.</b><br>Faltarían ${ton(pedido-disponible)} de ${esc(p)}.</div>`;}
+function sustituirOrdenYReplanificar(){const di=Number(document.getElementById('replaceDay')?.value)||0; const idx=Number(document.getElementById('replaceOrder')?.value); const t=data.plan?.dias?.[di]?.tareas?.filter(x=>x.tipo!=='vaciado'&&n(x.toneladas)>0)?.[idx]; const nuevo=document.getElementById('replaceProduct').value; const tons=n(document.getElementById('replaceTons').value); if(!t||!nuevo||tons<=0){document.getElementById('replaceResult').innerHTML='<div class="notice alert"><b>Aviso:</b> calcula la previsión y selecciona una orden válida.</div>';return;} const d=activeDays()[di]; const oldCam=n(t.toneladas)/n(data.tonCamion); if(!data.cargas[t.producto])data.cargas[t.producto]=blankCarga(); data.cargas[t.producto][d]=Math.max(0,n(data.cargas[t.producto][d])-oldCam); if(!data.cargas[nuevo])data.cargas[nuevo]=blankCarga(); data.cargas[nuevo][d]=n(data.cargas[nuevo][d])+tons/n(data.tonCamion); data.sustituciones.push({day:di,from:t.producto,to:nuevo,tons,start:document.getElementById('replaceStartTime').value}); calcularPlan(); document.getElementById('replaceResult').innerHTML='<div class="notice ok"><b>Orden sustituida y replanificada.</b><br>Se ha ajustado la demanda del día para forzar la nueva orden.</div>';}
+function quitarSustituciones(){data.sustituciones=[]; render(); document.getElementById('replaceResult').innerHTML='<div class="notice ok"><b>Sustituciones manuales eliminadas.</b></div>';}
+function anadirMantenimientoYReplanificar(){const day=Number(document.getElementById('maintDay')?.value)||0; const start=document.getElementById('maintStartTime').value; const end=document.getElementById('maintEndTime').value; const desc=document.getElementById('maintDesc').value||'Mantenimiento'; if(!start||!end||end<=start){document.getElementById('maintenanceResult').innerHTML='<div class="notice alert"><b>Aviso:</b> indica hora de inicio y fin válidas.</div>';return;} data.paradas.push({day,start,end,desc}); calcularPlan(); document.getElementById('maintenanceResult').innerHTML=`<div class="notice ok"><b>Parada programada añadida.</b><br>${diaCabecera(day).replace(/<br>.*/,'')} ${start}-${end}: ${esc(desc)}.</div>`;}
+function quitarMantenimientos(){data.paradas=[]; calcularPlan(); document.getElementById('maintenanceResult').innerHTML='<div class="notice ok"><b>Mantenimientos eliminados.</b></div>';}
+
+
+function cloneSilos(){return data.silos.map(s=>({...s}))}
+function consumeStock(silos, producto, tons){
+ let rem=tons;
+ for(const s of silos.filter(x=>x.producto===producto && n(x.actual)>0).sort((a,b)=>n(a.actual)-n(b.actual))){
+  const take=Math.min(rem,n(s.actual)); s.actual=n(s.actual)-take; rem-=take; if(rem<=0)break;
+ }
+ return rem; // déficit no servido
+}
+function addToSilos(silos, producto, tons){
+ // si doble silo y aplica, busca pareja N/V con el mismo producto y hueco. Reparte 50/50.
+ if(data.dobleSilo){
+  const parejas=[];
+  DOBLE_N.forEach(nn=>{
+   DOBLE_V.forEach(vv=>{
+    if(data.dobleMatrix?.[nn]?.[vv]){
+     const sn=silos.find(s=>s.nombre===nn && s.producto===producto && n(s.maximo)>n(s.actual));
+     const sv=silos.find(s=>s.nombre===vv && s.producto===producto && n(s.maximo)>n(s.actual));
+     if(sn && sv){
+       const hn=n(sn.maximo)-n(sn.actual);
+       const hv=n(sv.maximo)-n(sv.actual);
+       parejas.push({sn,sv,hueco:hn+hv,minh:Math.min(hn,hv)});
+     }
+    }
+   });
+  });
+  parejas.sort((a,b)=>b.minh-a.minh || b.hueco-a.hueco);
+  if(parejas.length){
+   const par=parejas[0];
+   const mitad=tons/2;
+   const an=Math.min(mitad,n(par.sn.maximo)-n(par.sn.actual));
+   const av=Math.min(mitad,n(par.sv.maximo)-n(par.sv.actual));
+   par.sn.actual=n(par.sn.actual)+an; par.sv.actual=n(par.sv.actual)+av;
+   let rem=tons-an-av;
+   if(rem>0) rem=addToSilosNormal(silos,producto,rem);
+   return {destino:`${par.sn.nombre}: ${ton(an)} + ${par.sv.nombre}: ${ton(av)}`, restante:rem, doble:true};
+  }
+ }
+ const rem=addToSilosNormal(silos,producto,tons);
+ return {destino:destinosUltimos.join(" + "), restante:rem, doble:false};
+}
+let destinosUltimos=[];
+function addToSilosNormal(silos, producto, tons){
+ destinosUltimos=[];
+ let rem=tons;
+ const candidatos=silos.filter(s=>s.producto===producto&&n(s.maximo)>n(s.actual)).sort((a,b)=>(n(b.maximo)-n(b.actual))-(n(a.maximo)-n(a.actual)));
+ for(const s of candidatos){
+  if(rem<=0)break;
+  const hue=n(s.maximo)-n(s.actual);
+  const add=Math.min(rem,hue);
+  s.actual=n(s.actual)+add; rem-=add;
+  destinosUltimos.push(`${s.nombre}: ${ton(add)}`);
+ }
+ return rem;
+}
+function huecoProductoSim(silos, producto){return silos.filter(s=>s.producto===producto).reduce((a,s)=>a+Math.max(0,n(s.maximo)-n(s.actual)),0)}
+function stockProductoSim(silos, producto){return silos.filter(s=>s.producto===producto).reduce((a,s)=>a+n(s.actual),0)}
+function prioridadProducto(silos, diaIndex){
+ // Necesidad: cargas de hoy + futuras. Se produce hasta llenar silos aunque no haya carga, pero priorizando déficits del día.
+ const arr=data.productos.map(p=>{
+  const nombre=p.nombre;
+  const stock=stockProductoSim(silos,nombre);
+  const cargaHoy=cargaTon(nombre,activeDays()[diaIndex]);
+  const cargaFutura=activeDays().slice(diaIndex).reduce((s,d)=>s+cargaTon(nombre,d),0);
+  const deficitHoy=Math.max(0,cargaHoy-stock);
+  const deficitSemana=Math.max(0,cargaFutura-stock);
+  const hueco=huecoProductoSim(silos,nombre);
+  const score=deficitHoy*10000 + deficitSemana*100 + cargaFutura + hueco*0.01;
+  return {nombre,score,deficitHoy,deficitSemana,cargaFutura,hueco,stock};
+ }).filter(x=>x.hueco>0);
+ arr.sort((a,b)=>b.score-a.score);
+ return arr;
+}
+
+function calcularPlan(){
+ syncGruesosHumedoDesdeSilo3N();
+ const silos=cloneSilos();
+ const dias=activeDays().map(()=>({tareas:[]}));
+ const resumen=activeDays().map(()=>({secadas:0,hSecado:0,hVaciado:0,hParado:0,obs:""}));
+ const alertas=[];
+ let productoActual=null;
+ const humedoInicial={};
+ const humedoRestante={};
+ const humedoGenerado={};
+ const humedoProducido={};
+ const estadosDia=activeDays().map(()=>null);
+ (data.humedos||[]).forEach(h=>{const producido=activeDays().reduce((s,d)=>s+n(h.produccionDias?.[d]),0); humedoInicial[h.nombre]=n(h.toneladas); humedoProducido[h.nombre]=producido; humedoRestante[h.nombre]=n(h.toneladas); humedoGenerado[h.nombre]=0;});
+ if(humedoRestante["FV016 GRUESOS"]===undefined){humedoRestante["FV016 GRUESOS"]=0; humedoInicial["FV016 GRUESOS"]=0; humedoProducido["FV016 GRUESOS"]=0; humedoGenerado["FV016 GRUESOS"]=0;}
+ const minLote=n(data.minLote);
+ const maxLote=n(data.maxLote);
+ const samcaProd=prod("FV016 SAMCA");
+ if(!proporcionMezclaSamca().ok && (n(humedoRestante["FV016 SAMCA2"])>0 || samcaProd?.humedo==="FV016 SAMCA2")) alertas.push("La mezcla SAMCA2 + FV016 GRUESOS no es válida: revise las leyes introducidas.");
+ const horasDia=n(data.horasDia);
+ const totalParadasProgramadas=(data.paradas||[]).reduce((sum,p)=>{const a=(String(p.start||"00:00").split(":").map(Number)); const b=(String(p.end||"00:00").split(":").map(Number)); return sum+Math.max(0,(b[0]+b[1]/60)-(a[0]+a[1]/60));},0);
+ const totalHoras=Math.max(0,horasDia*activeDays().length-totalParadasProgramadas);
+ let tGlobal=0;
+ let guard=0;
+
+ // Demanda acumulada: antes de terminar cada día debe haber producto suficiente para suministrar ese día.
+ const demandaAcumulada={};
+ data.productos.forEach(p=>{
+   let acum=0;
+   demandaAcumulada[p.nombre]=activeDays().map(d=>{
+     acum+=cargaTon(p.nombre,d);
+     return acum;
+   });
+ });
+
+ const producidoAcumulado={};
+ const servidoAcumulado={};
+ data.productos.forEach(p=>{
+   producidoAcumulado[p.nombre]=0;
+   servidoAcumulado[p.nombre]=0;
+ });
+
+ function diaDeHora(h){
+   return Math.min(activeDays().length-1, Math.floor(h/horasDia));
+ }
+ function finDiaIndex(di){
+   return (di+1)*horasDia;
+ }
+ function horasHastaFinDiaActual(){
+   const di=diaDeHora(tGlobal);
+   return finDiaIndex(di)-tGlobal;
+ }
+ function snapshotEstadoDia(di){
+   estadosDia[di]={
+     silos: silos.map(s=>({nombre:s.nombre, producto:s.producto, actual:n(s.actual), maximo:n(s.maximo)})),
+     humedos: (data.humedos||[]).map(h=>({nombre:h.nombre, toneladas:n(humedoRestante[h.nombre])}))
+   };
+ }
+ function stockDisponible(producto){
+   return stockProductoSim(silos,producto);
+ }
+ function huecoDisponible(producto){
+   return huecoProductoSim(silos,producto);
+ }
+ function origenHumedo(producto){return prod(producto)?.humedo || defaultOrigenHumedo(producto);}
+ function generaGruesos(producto){return producto==="FV016 VIDRIO GUARDIAN" || producto==="FV016 VIDRIO BA-GLASS";}
+ function fracGruesosSubproducto(){return Math.max(0, Math.min(100, n(data.pctGruesosSubproducto)))/100;}
+ function factorPrincipal(producto){return generaGruesos(producto) ? (1-fracGruesosSubproducto()) : 1;}
+ function totalSecadoParaPrincipal(producto, principal){const f=factorPrincipal(producto); return f>0 ? principal/f : Infinity;}
+ function principalDesdeTotalSecado(producto, total){return total*factorPrincipal(producto);}
+ function gruesosDesdeTotalSecado(producto, total){return generaGruesos(producto) ? total*fracGruesosSubproducto() : 0;}
+ function generarGruesosSubproducto(toneladas){
+   if(toneladas<=0) return "";
+   humedoRestante["FV016 GRUESOS"] = n(humedoRestante["FV016 GRUESOS"]) + toneladas;
+   humedoGenerado["FV016 GRUESOS"] = n(humedoGenerado["FV016 GRUESOS"]) + toneladas;
+   return `Se generan ${ton(toneladas)} de FV016 GRUESOS. Queda FV016 GRUESOS ${ton(humedoRestante["FV016 GRUESOS"])}`;
+ }
+ function esSamcaPorMezcla(producto){return producto==="FV016 SAMCA" && origenHumedo(producto)==="FV016 SAMCA2";}
+ function proporcionMezclaSamcaSim(){
+   const lS=n(data.mezclaSamca?.leySamca2), lO=n(data.mezclaSamca?.leySamcaObj), lG=n(data.mezclaSamca?.leyGruesos);
+   if(lG===lS) return {ok:false, fracSamca2:0, fracGruesos:0};
+   const fracGruesos=(lO-lS)/(lG-lS), fracSamca2=1-fracGruesos;
+   return {ok:fracGruesos>=0 && fracGruesos<=1 && fracSamca2>=0 && fracSamca2<=1, fracSamca2, fracGruesos};
+ }
+ function samcaMezclaDisponible(){
+   const pr=proporcionMezclaSamcaSim(); if(!pr.ok) return 0;
+   const porSamca2=pr.fracSamca2>0 ? n(humedoRestante["FV016 SAMCA2"])/pr.fracSamca2 : Infinity;
+   const porGruesos=pr.fracGruesos>0 ? n(humedoRestante["FV016 GRUESOS"])/pr.fracGruesos : Infinity;
+   return Math.min(porSamca2, porGruesos);
+ }
+ function humedoDisponibleSim(producto){
+   // Regla especial: FV016 SAMCA puede fabricarse con su húmedo directo y, además,
+   // con la mezcla FV016 SAMCA2 + FV016 GRUESOS aunque el origen seleccionado sea FV016 SAMCA.
+   if(producto==="FV016 SAMCA"){
+     const origen=origenHumedo(producto);
+     const directo = origen==="FV016 SAMCA2" ? 0 : n(humedoRestante[origen]);
+     return directo + samcaMezclaDisponible();
+   }
+   return n(humedoRestante[origenHumedo(producto)]);
+ }
+ function consumirMezclaSamca(toneladas){
+   const pr=proporcionMezclaSamcaSim();
+   if(!pr.ok || toneladas<=0) return {consumido:0, nota:"mezcla SAMCA2 + GRUESOS no válida"};
+   const maxMezcla=samcaMezclaDisponible();
+   const aMezclar=Math.min(toneladas,maxMezcla);
+   const consSamca2=aMezclar*pr.fracSamca2;
+   const consGruesos=aMezclar*pr.fracGruesos;
+   humedoRestante["FV016 SAMCA2"] = Math.max(0, n(humedoRestante["FV016 SAMCA2"]) - consSamca2);
+   humedoRestante["FV016 GRUESOS"] = Math.max(0, n(humedoRestante["FV016 GRUESOS"]) - consGruesos);
+   return {consumido:aMezclar, nota:`mezcla: FV016 SAMCA2 ${pct(pr.fracSamca2*100)} (${ton(consSamca2)}) + FV016 GRUESOS ${pct(pr.fracGruesos*100)} (${ton(consGruesos)}). Queda SAMCA2 ${ton(humedoRestante["FV016 SAMCA2"])} y GRUESOS ${ton(humedoRestante["FV016 GRUESOS"])}`};
+ }
+ function consumirHumedo(producto, toneladas){
+   if(producto==="FV016 SAMCA"){
+     const origen=origenHumedo(producto);
+     const notas=[];
+     let restante=toneladas;
+
+     // Si el origen seleccionado no es SAMCA2, consume primero el húmedo directo de FV016 SAMCA.
+     // Si no alcanza, completa automáticamente con SAMCA2 + GRUESOS.
+     if(origen!=="FV016 SAMCA2"){
+       const directo=Math.min(restante,n(humedoRestante[origen]));
+       if(directo>0){
+         humedoRestante[origen]=Math.max(0,n(humedoRestante[origen])-directo);
+         restante-=directo;
+         notas.push(`húmedo directo: ${origen} ${ton(directo)}. Queda ${ton(humedoRestante[origen])}`);
+       }
+     }
+
+     if(restante>0.000001){
+       const mezcla=consumirMezclaSamca(restante);
+       if(mezcla.consumido>0){
+         restante-=mezcla.consumido;
+         notas.push(mezcla.nota);
+       }
+     }
+
+     return notas.join(" | ") || "sin húmedo SAMCA consumido";
+   }
+
+   const origen=origenHumedo(producto);
+   humedoRestante[origen] = Math.max(0, n(humedoRestante[origen]) - toneladas);
+   return `húmedo: ${origen}. Queda ${ton(humedoRestante[origen])}`;
+ }
+ function demandaPendienteTotal(producto){
+   return activeDays().reduce((s,d)=>s+cargaTon(producto,d),0)-servidoAcumulado[producto];
+ }
+ function demandaNoCubiertaHastaDia(producto, di){
+   const requerido=demandaAcumulada[producto][di] || 0;
+   const cubierto=stockDisponible(producto) + servidoAcumulado[producto];
+   return Math.max(0, requerido-cubierto);
+ }
+ function demandaNoCubiertaSemana(producto){
+   const requerido=activeDays().reduce((s,d)=>s+cargaTon(producto,d),0);
+   const cubierto=stockDisponible(producto) + servidoAcumulado[producto];
+   return Math.max(0, requerido-cubierto);
+ }
+ function prioridadProductoContinuo(){
+   const di=diaDeHora(tGlobal);
+   const lista=data.productos.map(p=>{
+     const nombre=p.nombre;
+     const hueco=huecoDisponible(nombre);
+     const humedo=humedoDisponibleSim(nombre);
+     const stock=stockDisponible(nombre);
+     const deficitHoy=demandaNoCubiertaHastaDia(nombre,di);
+     const deficitSemana=demandaNoCubiertaSemana(nombre);
+     const pendiente=demandaPendienteTotal(nombre);
+     let score=0;
+
+     // 1) Primero asegurar lo que hay que servir antes del cierre del día actual.
+     // 2) Después cubrir la demanda semanal pendiente.
+     // 3) Después, si sobra tiempo, secar lo máximo posible llenando huecos.
+     if(deficitHoy>0){
+       score=1000000000 + deficitHoy*100000 + deficitSemana*1000 + pendiente;
+     } else if(deficitSemana>0){
+       score=10000000 + deficitSemana*10000 + pendiente*100 + hueco;
+     } else {
+       score=hueco;
+     }
+
+     // Bonificación para seguir con el mismo producto y evitar vaciados si no hay urgencia mayor.
+     if(productoActual===nombre) score+=5000;
+
+     return {nombre,hueco,humedo,stock,deficitHoy,deficitSemana,pendiente,score};
+   })
+   .filter(x=>x.hueco>=minLote*factorPrincipal(x.nombre) && x.humedo>=minLote)
+   .sort((a,b)=>b.score-a.score);
+
+   return lista[0] || null;
+ }
+ function registrarTarea(inicio, duracion, tipo, producto, toneladas, destino, nota){
+   let restante=duracion;
+   let pos=inicio;
+   while(restante>0.000001){
+     const di=diaDeHora(pos);
+     const hasta=Math.min(restante, finDiaIndex(di)-pos);
+     if(tipo==="vaciado"){
+       resumen[di].hVaciado+=hasta;
+     }else if(tipo==="secado"){
+       const tonsParte=toneladas*(hasta/duracion);
+       resumen[di].hSecado+=hasta;
+       resumen[di].secadas+=tonsParte;
+       dias[di].tareas.push({
+         producto,
+         toneladas:tonsParte,
+         horas:hasta,
+         destino,
+         nota
+       });
+     }
+     pos+=hasta;
+     restante-=hasta;
+   }
+ }
+ const produccionHumedaActivada={};
+ function activarProduccionHumedaHastaDia(di){
+   // El húmedo producido un día solo se puede secar desde el día siguiente.
+   for(let prev=0; prev<di; prev++){
+     if(produccionHumedaActivada[prev]) continue;
+     const key=activeDays()[prev];
+     (data.humedos||[]).forEach(h=>{
+       const prodDia=n(h.produccionDias?.[key]);
+       if(prodDia>0) humedoRestante[h.nombre]=n(humedoRestante[h.nombre])+prodDia;
+     });
+     produccionHumedaActivada[prev]=true;
+   }
+ }
+ function servirDiasVencidos(){
+   activarProduccionHumedaHastaDia(diaDeHora(tGlobal));
+   // Al pasar de un día a otro, descuenta automáticamente las cargas de los días cerrados.
+   for(let di=0; di<activeDays().length; di++){
+     if(tGlobal+0.000001 < finDiaIndex(di)) break;
+     data.productos.forEach(p=>{
+       const producto=p.nombre;
+       const requeridoDia=cargaTon(producto,activeDays()[di]);
+       const yaServidoHastaDia=servidoAcumulado[producto];
+       const requeridoHastaDia=demandaAcumulada[producto][di] || 0;
+       const pendienteDia=Math.max(0, requeridoHastaDia-yaServidoHastaDia);
+       const aServir=Math.min(requeridoDia, pendienteDia);
+       if(aServir>0){
+         const falta=consumeStock(silos,producto,aServir);
+         servidoAcumulado[producto]+=aServir-falta;
+         if(falta>0.001){
+           const txt=`${diaCabecera(di).replace(/<br>.*/,'')}: no hay material suficiente para servir ${producto}. Faltan ${ton(falta)}`;
+           if(!alertas.includes(txt)) alertas.push(txt);
+           resumen[di].obs = resumen[di].obs ? resumen[di].obs + "; " + `${producto}: faltan ${ton(falta)}` : `${producto}: faltan ${ton(falta)}`;
+         }
+       }
+     });
+     if(!estadosDia[di]) snapshotEstadoDia(di);
+   }
+ }
+
+ while(tGlobal<totalHoras-0.000001 && guard++<2000){
+   servirDiasVencidos();
+   const pr=prioridadProductoContinuo();
+   if(!pr) break;
+
+   const objetivo=pr.nombre;
+   const rate=(data.dobleSilo ? n(data.dobleTh) : 0) || th(objetivo);
+   if(rate<=0){
+     alertas.push(`No hay t/h de secado definido para ${objetivo}.`);
+     break;
+   }
+
+   let hv=0;
+   if(productoActual && productoActual!==objetivo){
+     hv=n(data.vaciados[productoActual]?.[objetivo]);
+   }
+
+   if(tGlobal+hv>=totalHoras-0.000001) break;
+
+   // El ciclo es continuo: puede empezar un día y terminar al siguiente.
+   // Solo se limita por el final de la semana, no por el final de cada día.
+   const tiempoDisponibleSecado=totalHoras-tGlobal-hv;
+   const maxPorTiempo=tiempoDisponibleSecado*rate;
+   const hueco=huecoDisponible(objetivo);
+   const humedoDisp=humedoDisponibleSim(objetivo);
+   const factor=factorPrincipal(objetivo);
+   const maxTotalPorHueco = factor>0 ? hueco/factor : 0;
+
+   let deseadoPrincipal;
+   if(pr.deficitHoy>0){
+     deseadoPrincipal=Math.max(minLote*factor, pr.deficitHoy);
+   } else if(pr.deficitSemana>0){
+     deseadoPrincipal=Math.max(minLote*factor, pr.deficitSemana);
+   } else {
+     deseadoPrincipal=maxLote*factor;
+   }
+   const deseadoTotal=totalSecadoParaPrincipal(objetivo,deseadoPrincipal);
+
+   let lote=Math.min(maxLote, maxTotalPorHueco, humedoDisp, deseadoTotal, maxPorTiempo);
+
+   // Si el producto actual es el mismo y queda hueco, se intenta alargar el lote hasta el máximo.
+   // Esto favorece secar las máximas toneladas seguidas del mismo producto.
+   if(productoActual===objetivo){
+     lote=Math.min(maxLote, maxTotalPorHueco, humedoDisp, Math.max(lote, maxPorTiempo));
+   }
+
+   // Regla crítica: no planificar lotes inferiores al mínimo de toneladas que pasan por secado.
+   if(lote < minLote-0.000001) break;
+
+   const inicioVaciado=tGlobal;
+   if(hv>0){
+     registrarTarea(tGlobal,hv,"vaciado",objetivo,0,"",`Vaciado por cambio de ${productoActual} a ${objetivo}`);
+     tGlobal+=hv;
+   }
+
+   const principal=principalDesdeTotalSecado(objetivo,lote);
+   const gruesosGenerados=gruesosDesdeTotalSecado(objetivo,lote);
+   const add=addToSilos(silos,objetivo,principal);
+   const principalReal=principal-add.restante;
+   const factorReal=factorPrincipal(objetivo);
+   const realmente=factorReal>0 ? principalReal/factorReal : 0;
+   const gruesosReal=gruesosDesdeTotalSecado(objetivo,realmente);
+   if(realmente < minLote-0.000001){
+     break;
+   }
+
+   const notaHumedo=consumirHumedo(objetivo, realmente);
+   const notaSubproducto=generarGruesosSubproducto(gruesosReal);
+
+   const hReal=realmente/rate;
+   let motivo;
+   if(pr.deficitHoy>0) motivo="Necesario para servir el día actual";
+   else if(pr.deficitSemana>0) motivo="Necesario para cargas de la semana";
+   else motivo="Producción máxima hasta llenar silos";
+
+   const notaProducto = generaGruesos(objetivo) ? ` - producción real: ${ton(principalReal)} ${objetivo} + ${ton(gruesosReal)} FV016 GRUESOS` : "";
+   registrarTarea(tGlobal,hReal,"secado",objetivo,realmente,add.destino || "Sin hueco",motivo + notaProducto + ` - ${notaHumedo}` + (notaSubproducto ? ` - ${notaSubproducto}` : "") + (add.doble ? " - doble silo 50/50" : ""));
+   tGlobal+=hReal;
+   productoActual=objetivo;
+   producidoAcumulado[objetivo]+=principalReal;
+ }
+
+ // Descuenta las cargas de los días que queden al cerrar la planificación.
+ tGlobal=totalHoras;
+ servirDiasVencidos();
+ activeDays().forEach((d,di)=>{ if(!estadosDia[di]) snapshotEstadoDia(di); });
+
+ resumen.forEach((r,di)=>{
+   r.hParado=Math.max(0,horasDia-r.hSecado-r.hVaciado);
+   if(!r.obs){
+     if(r.hVaciado>0) r.obs=`Parada por vaciado: ${horasTxt(r.hVaciado)}`;
+     else r.obs="";
+   }
+ });
+
+ const humedosRestantes=(data.humedos||[]).map(h=>{
+   const inicial=n(humedoInicial[h.nombre]);
+   const producido=n(humedoProducido[h.nombre]);
+   const restante=n(humedoRestante[h.nombre]);
+   const generado=n(humedoGenerado[h.nombre]);
+   return {nombre:h.nombre, inicial, producido, consumido:Math.max(0,inicial+producido+generado-restante), generado, restante};
+ });
+
+ data.plan={dias,resumen,alertas,humedosRestantes,estadosDia};
+ render();
+}
+
+render();
+</script>
+</body>
+</html>
